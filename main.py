@@ -104,9 +104,11 @@ def turbine_i(settings) -> BaseModelApp:
 
 def main():
     args = utils.prep_env()
-    settings = json.load(open(args["exp_file"])) if args["exp_file"] is not None else config.conf
+    settings = (
+        json.load(open(args.exp_file)) if args.exp_file is not None else config.conf
+    )
 
-    for i in range(args["capacity"]):
+    for i in range(args.capacity):
         i += 1
         print(">>>>>>>>>>>>>> turbine", i, "<<<<<<<<<<<<<<<<<<")
 
