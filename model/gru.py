@@ -1,6 +1,6 @@
 import torch
-from torch import nn
 import wandb
+from torch import nn
 
 
 class SimpleGRU(nn.Module):

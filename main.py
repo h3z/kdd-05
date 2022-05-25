@@ -1,6 +1,7 @@
 import os
 import sys
 
+import numpy as np
 import torch
 import wandb
 
@@ -32,6 +33,7 @@ def turbine_i(i) -> BaseModelApp:
 
     # split
     train_df, val_df, test_df = data_split.split(df)
+    origin_test_df = test_df.copy()
     print(
         f"train size: {len(train_df)/config.DAY}, val size: {len(val_df)/config.DAY}, test size: {len(test_df)/config.DAY}"
     )
@@ -82,11 +84,18 @@ def turbine_i(i) -> BaseModelApp:
     [c.on_train_finish(model_app) for c in callbacks]
 
     # predict
-    test_preds, test_gts = train.predict(model_app, test_ds)
+    test_preds, _ = train.predict(model_app, test_ds)
 
     # post process
     test_preds = processor.postprocess(test_preds)[..., -1:]
-    test_gts = processor.postprocess(test_gts)[..., -1:]
+    # test_gts = processor.postprocess(test_gts)[..., -1:]
+    test_gts = (
+        iter(data_loader.DataLoader(origin_test_df).get())
+        .next()[1]
+        .cpu()
+        .detach()
+        .numpy()
+    )
     test_df = test_df.rename(columns=config.to_origin_names)
 
     # wandb_plot(train_pred_records, val_pred_records, test_preds, test_gts)
@@ -101,7 +110,8 @@ def turbine_i(i) -> BaseModelApp:
 
 def main():
     args = sys.argv[1:]
-    capacity = int(args[0])
+    capacity = int(args[0]) if len(args) != 0 else 1
+
     for i in range(capacity):
         i += 1
         print(">>>>>>>>>>>>>> turbine", i, "<<<<<<<<<<<<<<<<<<")

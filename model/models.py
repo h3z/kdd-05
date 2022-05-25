@@ -20,6 +20,7 @@ def get(batch_count=None) -> base_model.BaseModelApp:
             attn_seq2seq.AttnDecoderRNN().to("cuda"),
         )
 
-    modelapp.init_scheduler(batch_count)
+    if batch_count is not None:
+        modelapp.init_scheduler(batch_count)
 
     return modelapp

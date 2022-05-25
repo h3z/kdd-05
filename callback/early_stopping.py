@@ -1,6 +1,8 @@
 import numpy as np
-import torch, wandb, utils
+import torch
+import wandb
 
+import utils
 from callback.callback import Callback
 from model.base_model import BaseModelApp
 
