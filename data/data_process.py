@@ -18,6 +18,8 @@ class Scaler:
             self.mean = np.mean(data)
             self.std = np.std(data)
 
+        # print(f"mean: {self.mean}", f"std: {self.std}")
+
     def transform(self, data):
         return (data - self.mean) / self.std
 
@@ -40,7 +42,7 @@ class DataProcess:
         # self.scaler.fit(df[self.numerical_cols].fillna(0).values)
 
     def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
-        print("preprocess, ", df.shape)
+        # print("preprocess, ", df.shape)
         df = df.fillna(0)
         df.active_power = df.active_power.clip(lower=0)
         df.reactive_power = df.reactive_power.clip(lower=0)
@@ -53,7 +55,7 @@ class DataProcess:
                 df[i] = df[i].clip(lower=lower, upper=upper)
 
         df[C.feature_cols] = self.scaler.transform(df[C.feature_cols].values)
-        print("preprocess done, ", df.shape)
+        # print("preprocess done, ", df.shape)
         return df
 
     def postprocess(self, preds: np.ndarray) -> np.ndarray:

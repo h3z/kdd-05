@@ -1,7 +1,9 @@
 import os
+import sys
 
-import wandb
 import torch
+import wandb
+
 import utils
 from callback import early_stopping, wandb_callback
 from config import config
@@ -118,7 +120,11 @@ def turbine_i(i) -> BaseModelApp:
 
 
 def main():
-    for i in range(1, 135):
+    args = sys.argv[1:]
+    capacity = int(args[0])
+    for i in range(capacity):
+        i += 1
+        print(">>>>>>>>>>>>>> turbine", i, "<<<<<<<<<<<<<<<<<<")
         model = turbine_i(i)
         torch.save(model.checkpoint(), f"checkpoints/{i}.pt")
 
