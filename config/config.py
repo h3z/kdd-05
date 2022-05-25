@@ -12,29 +12,30 @@ __wandb__ = {
 }
 
 conf = {
-    "~lr": 0.00001,
-    "~batch_size": 512,
+    "~lr": 1e-4,
+    "~batch_size": 32,
     "~epochs": 20,
-    "~early_stopping_patience": 3,
+    "~early_stopping_patience": 10,
     "~optimizer": "adam",
     "~loss": "mse",
     "scheduler": "linear",  # linear, cosine
     "warmup": 0.1,
+    "teacher_forcing_ratio": 0.5,
     # data
     "data_version": "full",  # small, full
     "scaler": "all_col",  # each_col, all_col
-    "truncate": 0.99,
+    "truncate": 0.98,
     "input_size": 10,
-    "input_timesteps": 144,
-    "output_timesteps": 288,
+    "input_timesteps": DAY,
+    "output_timesteps": DAY * 2,
     # model
     "model": "gru",  # gru, seq2seq, attn_seq2seq
-    "hidden_size": 32,
-    "num_layer": 1,
+    "hidden_size": 48,
+    "num_layer": 2,
 }
 
 
-DATA_SPLIT_SIZE = {"train_size": 153 * DAY, "val_size": 16 * DAY, "test_size": 15 * DAY}
+DATA_SPLIT_SIZE = {"train_size": 223 * DAY, "val_size": 16 * DAY, "test_size": 15 * DAY}
 to_custom_names = {
     "TurbID": "id",
     "Day": "day",

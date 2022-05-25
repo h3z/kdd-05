@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 
@@ -17,14 +18,12 @@ from utils import evaluate
 utils.fix_random()
 
 
-def turbine_i(i) -> BaseModelApp:
-    tconf = config.conf
-    tconf["turbine"] = i
-    wandb.init(config=tconf, **config.__wandb__)
+def turbine_i(settings) -> BaseModelApp:
+    wandb.init(config=settings, **config.__wandb__)
     print(wandb.config)
 
     # read csv
-    df = data_reader.DataReader().train.query("id == @i")
+    df = data_reader.DataReader().train.query(f"id == {settings['turbine']}")
 
     # split
     train_df, val_df, test_df = data_split.split(df)
@@ -93,7 +92,7 @@ def turbine_i(i) -> BaseModelApp:
     )
     test_df = test_df.rename(columns=config.to_origin_names)
 
-    # wandb_plot(train_pred_records, val_pred_records, test_preds, test_gts)
+    # utils.wandb_plot(train_pred_records, val_pred_records, test_preds, test_gts)
 
     rmse, mae, score = evaluate([test_preds], [test_gts], [test_df])
     wandb.log({"rmse": rmse, "mae": mae, "score": score})
@@ -104,48 +103,16 @@ def turbine_i(i) -> BaseModelApp:
 
 
 def main():
-    args = sys.argv[1:]
-    capacity = int(args[0]) if len(args) != 0 else 1
+    args = utils.prep_env()
+    settings = json.load(open(args["exp_file"])) if args["exp_file"] is not None else config.conf
 
-    for i in range(capacity):
+    for i in range(args["capacity"]):
         i += 1
         print(">>>>>>>>>>>>>> turbine", i, "<<<<<<<<<<<<<<<<<<")
-        model = turbine_i(i)
+
+        settings["turbine"] = i
+        model = turbine_i(settings)
         torch.save(model.checkpoint(), f"checkpoints/{i}.pt")
-
-
-def wandb_plot(train_pred_records, val_pred_records, test_preds, test_gts):
-    # plot gt & pred (last window)
-    for i in range(wandb.config.output_timesteps):
-        plot_dict = {}
-        last_window_idx = (-1, i, 0)
-        plot_dict["test_gt"] = test_gts[last_window_idx]
-        plot_dict["test_pred"] = test_preds[last_window_idx]
-        plot_dict["gt"] = val_pred_records[0][0][last_window_idx]
-        for j in range(5):
-            p = len(val_pred_records) // 5 * j
-            plot_dict[f"pred_{j}"] = val_pred_records[p][1][last_window_idx]
-            plot_dict[f"train_gt_{j}"] = train_pred_records[p][0][last_window_idx]
-            plot_dict[f"train_pred_{j}"] = train_pred_records[p][1][last_window_idx]
-
-        wandb.log(plot_dict)
-
-    for i in range(288):
-        from_batch = i // wandb.config.output_timesteps * wandb.config.output_timesteps
-        batch_pred_i = i % wandb.config.output_timesteps
-        batch_window_idx = (from_batch, batch_pred_i, 0)
-        plot_dict = {}
-        plot_dict["concat_test_gt"] = test_gts[batch_window_idx]
-        plot_dict["concat_test_pred"] = test_preds[batch_window_idx]
-        plot_dict["concat_gt"] = val_pred_records[0][0][batch_window_idx]
-        for j in range(5):
-            p = len(val_pred_records) // 5 * j
-            record = train_pred_records[p]
-            plot_dict[f"concat_pred_{j}"] = val_pred_records[p][1][batch_window_idx]
-            plot_dict[f"concat_train_gt_{j}"] = record[0][batch_window_idx]
-            plot_dict[f"concat_train_pred_{j}"] = record[1][batch_window_idx]
-
-        wandb.log(plot_dict)
 
 
 if __name__ == "__main__":

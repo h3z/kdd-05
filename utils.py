@@ -1,9 +1,11 @@
+import argparse
 import random
 import tempfile
 import time
 
 import numpy as np
 import torch
+import wandb
 
 from config.config import RANDOM_STATE
 
@@ -15,6 +17,13 @@ def fix_random():
 
 def mktemp(f):
     return f"{tempfile.mkdtemp()}/{f}"
+
+
+def prep_env():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--capacity", type=int, default=1)
+    parser.add_argument("--exp_file", type=str)
+    return parser.parse_args()
 
 
 def evaluate(predictions, grounds, raw_data_lst):
@@ -316,3 +325,37 @@ def regressor_metrics(pred, gt):
     _mape = mape(pred, gt)
     _mspe = mspe(pred, gt)
     return _mae, _mse, _rmse, _mape, _mspe
+
+
+def wandb_plot(train_pred_records, val_pred_records, test_preds, test_gts):
+    # plot gt & pred (last window)
+    for i in range(wandb.config.output_timesteps):
+        plot_dict = {}
+        last_window_idx = (-1, i, 0)
+        plot_dict["test_gt"] = test_gts[last_window_idx]
+        plot_dict["test_pred"] = test_preds[last_window_idx]
+        plot_dict["gt"] = val_pred_records[0][0][last_window_idx]
+        for j in range(5):
+            p = len(val_pred_records) // 5 * j
+            plot_dict[f"pred_{j}"] = val_pred_records[p][1][last_window_idx]
+            plot_dict[f"train_gt_{j}"] = train_pred_records[p][0][last_window_idx]
+            plot_dict[f"train_pred_{j}"] = train_pred_records[p][1][last_window_idx]
+
+        wandb.log(plot_dict)
+
+    for i in range(288):
+        from_batch = i // wandb.config.output_timesteps * wandb.config.output_timesteps
+        batch_pred_i = i % wandb.config.output_timesteps
+        batch_window_idx = (from_batch, batch_pred_i, 0)
+        plot_dict = {}
+        plot_dict["concat_test_gt"] = test_gts[batch_window_idx]
+        plot_dict["concat_test_pred"] = test_preds[batch_window_idx]
+        plot_dict["concat_gt"] = val_pred_records[0][0][batch_window_idx]
+        for j in range(5):
+            p = len(val_pred_records) // 5 * j
+            record = train_pred_records[p]
+            plot_dict[f"concat_pred_{j}"] = val_pred_records[p][1][batch_window_idx]
+            plot_dict[f"concat_train_gt_{j}"] = record[0][batch_window_idx]
+            plot_dict[f"concat_train_pred_{j}"] = record[1][batch_window_idx]
+
+        wandb.log(plot_dict)
