@@ -12,6 +12,8 @@ class WandbCallback(Callback):
         self.train_batch_losses = []
         self.val_batch_losses = []
 
+        self.max_pred = []
+
     def on_val_end(self, preds: np.ndarray, gts: np.ndarray, loss):
         # gts = gts.detach().cpu()
         # preds = preds.detach().cpu()
@@ -23,7 +25,8 @@ class WandbCallback(Callback):
         return True
 
     def on_train_batch_end(self, preds: np.ndarray, gts: np.ndarray, loss):
-        wandb.log({"max_pred": preds.max(), "max_gt": gts.max()})
+        self.max_pred.append(preds.max())
+        self.max_gt = gts.max()
         self.train_batch_losses.append(loss)
 
     def on_epoch_end(self, loss, val_loss, model_app: BaseModelApp) -> bool:
@@ -38,3 +41,7 @@ class WandbCallback(Callback):
         )
 
         return True
+
+    def on_train_finish(self, model):
+        for i in range(len(self.max_pred)):
+            wandb.log({"max_pred": self.max_pred[i], "max_gt": self.max_gt})
