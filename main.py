@@ -18,27 +18,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 def get_parameters():
-    return {
-        "~lr": 0.00001,
-        "~batch_size": 512,
-        "~epochs": 20,
-        "~early_stopping_patience": 3,
-        "~optimizer": "adam",
-        "~loss": "mse",
-        "scheduler": "linear",  # linear, cosine
-        "warmup": 0.1,
-        # data
-        "data_version": "full",  # small, full
-        "scaler": "all_col",  # each_col, all_col
-        "truncate": 0.99,
-        "input_size": 10,
-        "input_timesteps": 144,
-        "output_timesteps": 288,
-        # model
-        "model": "gru",  # gru, seq2seq, attn_seq2seq
-        "hidden_size": 32,
-        "num_layer": 1,
-    }
+    return config.conf
 
 
 def turbine_i(i) -> BaseModelApp:
