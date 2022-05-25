@@ -1,9 +1,10 @@
-import pandas as pd
 from typing import List
-from config.config import RANDOM_STATE
+
+import pandas as pd
+import wandb
 from sklearn.model_selection import train_test_split
 
-from config.config import DAY, DATA_SPLIT_SIZE
+from config.config import DATA_SPLIT_SIZE, DAY, RANDOM_STATE
 
 
 def split(df: pd.DataFrame) -> List[pd.DataFrame]:
@@ -14,8 +15,8 @@ def split(df: pd.DataFrame) -> List[pd.DataFrame]:
 
     borders1 = [
         0,
-        0 + train_size - DAY,
-        0 + train_size + val_size - DAY,
+        0 + train_size - wandb.config.input_timesteps,
+        0 + train_size + val_size - wandb.config.input_timesteps,
     ]
     borders2 = [
         0 + train_size,

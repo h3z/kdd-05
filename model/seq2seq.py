@@ -54,6 +54,10 @@ class ModelApp(BaseModelApp):
 
         self.teacher_forcing_ratio = wandb.config.teacher_forcing_ratio
 
+    @property
+    def opt(self):
+        return self.enc_optimizer
+
     def zero_grad(self):
         self.enc_optimizer.zero_grad()
         self.dec_optimizer.zero_grad()

@@ -15,8 +15,6 @@ from train import losses, optimizers, schedulers, train
 from utils import evaluate
 
 utils.fix_random()
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
 
 
 def turbine_i(i) -> BaseModelApp:

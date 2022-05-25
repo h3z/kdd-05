@@ -47,7 +47,9 @@ class AttnDecoderRNN(nn.Module):
         num_layer = wandb.config.num_layer
         output_size = 1
 
-        self.attn = nn.Linear(self.hidden_size + output_size, 144)
+        self.attn = nn.Linear(
+            self.hidden_size + output_size, wandb.config.input_timesteps
+        )
         self.attn_combine = nn.Linear(self.hidden_size + output_size, self.hidden_size)
         self.gru = nn.GRU(
             self.hidden_size, self.hidden_size, num_layers=num_layer, batch_first=True
