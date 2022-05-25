@@ -1,9 +1,11 @@
-import torch
-from torch import nn
-import torch.nn.functional as F
-from model import seq2seq
-import wandb
 import random
+
+import torch
+import torch.nn.functional as F
+import wandb
+from torch import nn
+
+from model import seq2seq
 
 
 class EncoderRNN(nn.Module):

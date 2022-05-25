@@ -1,9 +1,11 @@
-import torch
-from torch import nn
-from model.base_model import BaseModelApp
-import wandb
-from train import optimizers, schedulers
 import random
+
+import torch
+import wandb
+from torch import nn
+
+from model.base_model import BaseModelApp
+from train import optimizers, schedulers
 
 
 class EncoderRNN(nn.Module):

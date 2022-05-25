@@ -18,12 +18,9 @@ utils.fix_random()
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
-def get_parameters():
-    return config.conf
-
 
 def turbine_i(i) -> BaseModelApp:
-    tconf = get_parameters()
+    tconf = config.conf
     tconf["turbine"] = i
     wandb.init(config=tconf, **config.__wandb__)
     print(wandb.config)
