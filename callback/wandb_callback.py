@@ -1,7 +1,8 @@
 import numpy as np
 import wandb
-from model.base_model import BaseModelApp
+
 from callback.callback import Callback
+from model.base_model import BaseModelApp
 
 
 class WandbCallback(Callback):
