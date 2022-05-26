@@ -116,7 +116,7 @@ def main():
         settings["turbine"] = i
         model, rmse, mae, score = turbine_i(settings)
 
-        scores[i] = [rmse, mae, score]
+        scores[i - 1] = [rmse, mae, score]
         torch.save(model.checkpoint(), f"{args.checkpoints}/{i}.pt")
 
     print(f"rmse: \n{scores[:, 0]} \nmae: \n{scores[:, 1]} \nscore: \n{scores[:, 2]}")

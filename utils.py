@@ -7,8 +7,8 @@ from pathlib import Path
 
 import numpy as np
 import torch
-import wandb
 
+import wandb
 from config.config import RANDOM_STATE
 
 
@@ -28,11 +28,11 @@ def prep_env():
     parser.add_argument("--capacity", type=int, default=1)
     parser.add_argument("--exp_file", type=str)
     parser.add_argument("--checkpoints", type=str, default=f"checkpoints_{timestamp}")
-    settings = parser.parse_args()
+    namespace, extra = parser.parse_known_args()
 
-    Path(settings.checkpoints).mkdir(exist_ok=True)
-
-    return settings
+    Path(namespace.checkpoints).mkdir(exist_ok=True)
+    print("Checkpoints:", namespace.checkpoints)
+    return namespace
 
 
 def evaluate(predictions, grounds, raw_data_lst):
