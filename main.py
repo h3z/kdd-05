@@ -99,7 +99,7 @@ def turbine_i(settings) -> BaseModelApp:
 
     wandb.finish()
 
-    return model_app
+    return model_app, rmse, mae, score
 
 
 def main():
@@ -108,13 +108,21 @@ def main():
         json.load(open(args.exp_file)) if args.exp_file is not None else config.conf
     )
 
+    scores = np.zeros((args.capacity, 3))
     for i in range(args.capacity):
         i += 1
         print(">>>>>>>>>>>>>> turbine", i, "<<<<<<<<<<<<<<<<<<")
 
         settings["turbine"] = i
-        model = turbine_i(settings)
-        torch.save(model.checkpoint(), f"checkpoints/{i}.pt")
+        model, rmse, mae, score = turbine_i(settings)
+
+        scores[i] = [rmse, mae, score]
+        torch.save(model.checkpoint(), f"{args.checkpoints}/{i}.pt")
+
+    print(f"rmse: \n{scores[:, 0]} \nmae: \n{scores[:, 1]} \nscore: \n{scores[:, 2]}")
+    print(
+        f"rmse: {scores[:, 0].mean()}, mae: {scores[:, 1].mean()}, score: {scores[:, 2].mean()}"
+    )
 
 
 if __name__ == "__main__":

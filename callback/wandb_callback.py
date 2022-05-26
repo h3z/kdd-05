@@ -36,7 +36,7 @@ class WandbCallback(Callback):
             {
                 "loss": loss,
                 "val_loss": val_loss,
-                "lr": model_app.opt.param_groups[0]["lr"],
+                # "lr": model_app.opt.param_groups[0]["lr"],
             }
         )
 

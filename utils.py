@@ -2,6 +2,8 @@ import argparse
 import random
 import tempfile
 import time
+from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -20,10 +22,17 @@ def mktemp(f):
 
 
 def prep_env():
+    timestamp = int(datetime.timestamp(datetime.now()))
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--capacity", type=int, default=1)
     parser.add_argument("--exp_file", type=str)
-    return parser.parse_args()
+    parser.add_argument("--checkpoints", type=str, default=f"checkpoints_{timestamp}")
+    settings = parser.parse_args()
+
+    Path(settings.checkpoints).mkdir(exist_ok=True)
+
+    return settings
 
 
 def evaluate(predictions, grounds, raw_data_lst):
