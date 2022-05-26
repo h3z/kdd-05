@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 
@@ -6,42 +7,24 @@ import torch
 import wandb
 
 import utils
+from callback import early_stopping, wandb_callback
 from config import config
 from data import data_loader, data_process, data_reader, data_split
 from model import models
 from model.base_model import BaseModelApp
-from train import train
+from train import losses, optimizers, schedulers, train
 from utils import evaluate
-import datetime
 
 utils.fix_random()
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
-class TMP:
-    def __init__(self) -> None:
-        self.t = datetime.datetime.now()
-
-    def print(self, t):
-        # print(datetime.datetime.now() - self.t, t)
-        self.t = datetime.datetime.now()
-
-
-t = TMP()
-
-
-def turbine_i(i) -> BaseModelApp:
-
-    t.print("start")
-    tconf = config.conf
-    tconf["turbine"] = i
+def turbine_i(settings, args) -> BaseModelApp:
     config.__wandb__["mode"] = "offline"
-    wandb.init(config=tconf, **config.__wandb__)
-    t.print("wandb")
+    wandb.init(config=settings, **config.__wandb__)
+    print(wandb.config)
 
     # read csv
-    df = data_reader.DataReader().train.query("id == @i")
-    t.print("read")
+    df = data_reader.DataReader().train.query(f"id == {settings['turbine']}")
 
     # split
     train_df, _, test_df = data_split.split(df)
@@ -53,17 +36,16 @@ def turbine_i(i) -> BaseModelApp:
 
     # torch DataLoader
     test_ds = data_loader.DataLoader(test_df).get()
-    t.print("ds")
 
     # model = models.get()
     model_app = models.get()
 
-    model_app.load_checkpoint(torch.load(f"checkpoints/{i}.pt"))
-    t.print("model")
+    model_app.load_checkpoint(
+        torch.load(f"{args.checkpoints}/{settings['turbine']}.pt")
+    )
 
     # predict
     test_preds, _ = train.predict(model_app, test_ds)
-    t.print("pred")
 
     # post process
     test_preds = processor.postprocess(test_preds)[..., -1:]
@@ -77,22 +59,32 @@ def turbine_i(i) -> BaseModelApp:
     test_df = test_df.rename(columns=config.to_origin_names)
 
     rmse, mae, score = evaluate([test_preds], [test_gts], [test_df])
-    t.print("score")
 
     wandb.finish()
-    t.print("finish")
 
-    return model_app
+    return model_app, rmse, mae, score
 
 
 def main():
-    args = sys.argv[1:]
-    capacity = int(args[0]) if len(args) != 0 else 1
+    args = utils.prep_env()
+    settings = (
+        json.load(open(args.exp_file)) if args.exp_file is not None else config.conf
+    )
 
-    for i in range(capacity):
+    scores = np.zeros((args.capacity, 3))
+    for i in range(args.capacity):
         i += 1
         print(">>>>>>>>>>>>>> turbine", i, "<<<<<<<<<<<<<<<<<<")
-        model = turbine_i(i)
+
+        settings["turbine"] = i
+        model, rmse, mae, score = turbine_i(settings, args)
+
+        scores[i] = [rmse, mae, score]
+
+    print(f"rmse: \n{scores[:, 0]} \nmae: \n{scores[:, 1]} \nscore: \n{scores[:, 2]}")
+    print(
+        f"rmse: {scores[:, 0].mean()}, mae: {scores[:, 1].mean()}, score: {scores[:, 2].mean()}"
+    )
 
 
 if __name__ == "__main__":
