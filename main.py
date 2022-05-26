@@ -4,9 +4,9 @@ import sys
 
 import numpy as np
 import torch
-import wandb
 
 import utils
+import wandb
 from callback import early_stopping, wandb_callback
 from config import config
 from data import data_loader, data_process, data_reader, data_split
