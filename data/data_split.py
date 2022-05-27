@@ -1,10 +1,10 @@
 from typing import List
 
 import pandas as pd
-import wandb
 from sklearn.model_selection import train_test_split
 
-from config.config import DATA_SPLIT_SIZE, DAY, RANDOM_STATE
+import wandb
+from utils import DATA_SPLIT_SIZE
 
 
 def split(df: pd.DataFrame) -> List[pd.DataFrame]:

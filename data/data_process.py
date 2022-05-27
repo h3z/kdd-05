@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
-import wandb
 from sklearn.preprocessing import StandardScaler
 
-import config.config as C
+import utils
+import wandb
 
 
 class Scaler:
@@ -35,7 +35,7 @@ class DataProcess:
         self.scaler = Scaler()
         df = df.fillna(0)
 
-        self.scaler.fit(df[C.feature_cols].values)
+        self.scaler.fit(df[utils.feature_cols].values)
 
         # self.scaler = StandardScaler()
         # self.numerical_cols = [...]
@@ -49,12 +49,12 @@ class DataProcess:
 
         if wandb.config.truncate > 0:
             p = wandb.config.truncate
-            for i in C.feature_cols:
+            for i in utils.feature_cols:
                 lower = df[i].quantile(1 - p)
                 upper = df[i].quantile(p)
                 df[i] = df[i].clip(lower=lower, upper=upper)
 
-        df[C.feature_cols] = self.scaler.transform(df[C.feature_cols].values)
+        df[utils.feature_cols] = self.scaler.transform(df[utils.feature_cols].values)
         # print("preprocess done, ", df.shape)
         return df
 

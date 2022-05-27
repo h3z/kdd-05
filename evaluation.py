@@ -1,18 +1,15 @@
 import json
-import os
-import sys
 
 import numpy as np
 import torch
-import wandb
 
 import utils
-from callback import early_stopping, wandb_callback
+import wandb
 from config import config
 from data import data_loader, data_process, data_reader, data_split
 from model import models
 from model.base_model import BaseModelApp
-from train import losses, optimizers, schedulers, train
+from train import train
 from utils import evaluate
 
 utils.fix_random()
@@ -56,7 +53,7 @@ def turbine_i(settings, args) -> BaseModelApp:
         .detach()
         .numpy()
     )
-    test_df = test_df.rename(columns=config.to_origin_names)
+    test_df = test_df.rename(columns=utils.to_origin_names)
 
     rmse, mae, score = evaluate([test_preds], [test_gts], [test_df])
 

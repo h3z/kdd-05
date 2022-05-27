@@ -28,7 +28,10 @@ class EarlyStopping(Callback):
         else:
             self.counter += 1
 
-        return self.counter < self.patience
+        stop = self.counter >= self.patience
+        if stop:
+            print("Early stopping")
+        return not stop
 
     def on_train_finish(self, model: BaseModelApp):
         model.load_checkpoint(self.best_state_dict)

@@ -4,9 +4,9 @@ from typing import List
 import numpy as np
 import pandas as pd
 import torch
-import wandb
 
-from config.config import feature_cols
+import wandb
+from utils import feature_cols
 
 
 class Dataset(torch.utils.data.Dataset):

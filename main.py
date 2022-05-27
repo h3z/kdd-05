@@ -1,6 +1,4 @@
 import json
-import os
-import sys
 
 import numpy as np
 import torch
@@ -12,7 +10,7 @@ from config import config
 from data import data_loader, data_process, data_reader, data_split
 from model import models
 from model.base_model import BaseModelApp
-from train import losses, optimizers, schedulers, train
+from train import losses, train
 from utils import evaluate
 
 utils.fix_random()
@@ -23,13 +21,13 @@ def turbine_i(settings) -> BaseModelApp:
     print(wandb.config)
 
     # read csv
-    df = data_reader.DataReader().train.query(f"id == {settings['turbine']}")
+    df = data_reader.DataReader(settings["turbine"]).train
 
     # split
     train_df, val_df, test_df = data_split.split(df)
     origin_test_df = test_df.copy()
     print(
-        f"train size: {len(train_df)/config.DAY}, val size: {len(val_df)/config.DAY}, test size: {len(test_df)/config.DAY}"
+        f"train size: {len(train_df)/utils.DAY}, val size: {len(val_df)/utils.DAY}, test size: {len(test_df)/utils.DAY}"
     )
 
     # preprocess
@@ -50,8 +48,8 @@ def turbine_i(settings) -> BaseModelApp:
     criterion = losses.get()
     callbacks = [early_stopping.EarlyStopping(), wandb_callback.WandbCallback()]
 
-    train_pred_records = []
-    val_pred_records = []
+    # train_pred_records = []
+    # val_pred_records = []
     for epoch in range(wandb.config["~epochs"]):
         train_loss, train_gts, train_preds = train.epoch_train(
             model_app,
@@ -67,12 +65,11 @@ def turbine_i(settings) -> BaseModelApp:
         )
         print(epoch, ": train_loss", train_loss, "val_loss", val_loss)
 
-        train_pred_records.append((train_gts, train_preds))
-        val_pred_records.append((val_gts, val_preds))
+        # train_pred_records.append((train_gts, train_preds))
+        # val_pred_records.append((val_gts, val_preds))
 
         res = [c.on_epoch_end(train_loss, val_loss, model_app) for c in callbacks]
         if False in res:
-            print("Early stopping")
             break
 
     [c.on_train_finish(model_app) for c in callbacks]
@@ -90,7 +87,7 @@ def turbine_i(settings) -> BaseModelApp:
         .detach()
         .numpy()
     )
-    test_df = test_df.rename(columns=config.to_origin_names)
+    test_df = test_df.rename(columns=utils.to_origin_names)
 
     # utils.wandb_plot(train_pred_records, val_pred_records, test_preds, test_gts)
 
