@@ -52,6 +52,7 @@ class WandbCallback(Callback):
                 {
                     "max_pred": self.max_pred[i],
                     "max_gt": self.max_gt,
-                    "min_loss": self.min_loss,
+                    "min_loss": self.min_loss[0],
+                    "min_loss_val": self.min_loss[1],
                 }
             )
