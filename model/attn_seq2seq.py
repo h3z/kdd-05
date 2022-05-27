@@ -2,9 +2,9 @@ import random
 
 import torch
 import torch.nn.functional as F
-import wandb
 from torch import nn
 
+import wandb
 from model import seq2seq
 
 

@@ -1,9 +1,9 @@
 import random
 
 import torch
-import wandb
 from torch import nn
 
+import wandb
 from model.base_model import BaseModelApp
 from train import optimizers, schedulers
 
