@@ -1,8 +1,8 @@
 import numpy as np
 import torch
-import wandb
 
 import utils
+import wandb
 from callback.callback import Callback
 from model.base_model import BaseModelApp
 
