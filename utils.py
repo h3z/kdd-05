@@ -1,4 +1,5 @@
 import argparse
+import pickle
 import random
 import tempfile
 import time
@@ -11,8 +12,22 @@ import torch
 import wandb
 from config.config import RANDOM_STATE
 
+__NO_CACHE__ = 0
+__USE_CACHE__ = 1
+__SAVE_CACHE__ = 2
+CACHE_PATH = "/home/yanhuize/kdd2022/dataset/cache"
+
+
 DAY = 144
 DATA_SPLIT_SIZE = {"train_size": 223 * DAY, "val_size": 16 * DAY, "test_size": 15 * DAY}
+
+
+def load_cache(fname):
+    return pickle.load(open(f"{CACHE_PATH}/{fname}", "rb"))
+
+
+def save_cache(obj, fname):
+    pickle.dump(obj, open(f"{CACHE_PATH}/{fname}", "wb"))
 
 
 def fix_random():
@@ -31,6 +46,12 @@ def prep_env():
     parser.add_argument("--capacity", type=int, default=1)
     parser.add_argument("--exp_file", type=str)
     parser.add_argument("--checkpoints", type=str, default=f"checkpoints_{timestamp}")
+    parser.add_argument(
+        "--cache",
+        type=int,
+        default=__NO_CACHE__,
+        help=f"{__NO_CACHE__}: no cache, {__USE_CACHE__}: use cache, {__SAVE_CACHE__}: save cache",
+    )
     namespace, extra = parser.parse_known_args()
 
     Path(namespace.checkpoints).mkdir(exist_ok=True)

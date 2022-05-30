@@ -1,4 +1,6 @@
+import datetime
 import json
+import sys
 
 import numpy as np
 import torch
@@ -11,30 +13,49 @@ from data import data_loader, data_process, data_reader, data_split
 from model import models
 from model.base_model import BaseModelApp
 from train import losses, train
-from utils import evaluate
+from utils import __NO_CACHE__, __SAVE_CACHE__, __USE_CACHE__, evaluate
 
 utils.fix_random()
 
 
-def turbine_i(settings) -> BaseModelApp:
+class TMP:
+    def __init__(self) -> None:
+        self.t = datetime.datetime.now()
+
+    def print(self, t):
+        print(datetime.datetime.now() - self.t, t)
+        self.t = datetime.datetime.now()
+
+
+t = TMP()
+
+
+def turbine_i(settings, args) -> BaseModelApp:
     wandb.init(config=settings, **config.__wandb__)
     print(wandb.config)
 
-    # read csv
-    df = data_reader.DataReader(settings["turbine"]).train
+    if args.cache == __USE_CACHE__:
+        train_df, val_df, test_df, processor = utils.load_cache("cache.pkl")
+    elif args.cache == __NO_CACHE__ or args.cache == __SAVE_CACHE__:
+        # read csv
+        df = data_reader.DataReader(settings["turbine"]).train
 
-    # split
-    train_df, val_df, test_df = data_split.split(df)
-    origin_test_df = test_df.copy()
-    print(
-        f"train size: {len(train_df)/utils.DAY}, val size: {len(val_df)/utils.DAY}, test size: {len(test_df)/utils.DAY}"
-    )
+        # split
+        train_df, val_df, test_df = data_split.split(df)
+        origin_test_df = test_df.copy()
+        print(
+            f"train size: {len(train_df)/utils.DAY}, val size: {len(val_df)/utils.DAY}, test size: {len(test_df)/utils.DAY}"
+        )
 
-    # preprocess
-    processor = data_process.DataProcess(train_df)
-    train_df = processor.preprocess(train_df)
-    val_df = processor.preprocess(val_df)
-    test_df = processor.preprocess(test_df)
+        # preprocess
+        processor = data_process.DataProcess(train_df)
+        train_df = processor.preprocess(train_df)
+        val_df = processor.preprocess(val_df)
+        test_df = processor.preprocess(test_df)
+
+        if args.cache == __SAVE_CACHE__:
+            # 会覆盖
+            utils.save_cache((train_df, val_df, test_df, processor), "cache.pkl")
 
     # torch DataLoader
     train_ds = data_loader.DataLoader(train_df, is_train=True).get()
@@ -51,6 +72,7 @@ def turbine_i(settings) -> BaseModelApp:
     # train_pred_records = []
     # val_pred_records = []
     for epoch in range(wandb.config["~epochs"]):
+        t.print("next")
         train_loss, train_gts, train_preds = train.epoch_train(
             model_app,
             train_ds,
@@ -111,7 +133,7 @@ def main():
         print(">>>>>>>>>>>>>> turbine", i, "<<<<<<<<<<<<<<<<<<")
 
         settings["turbine"] = i
-        model, rmse, mae, score = turbine_i(settings)
+        model, rmse, mae, score = turbine_i(settings, args)
 
         scores[i - 1] = [rmse, mae, score]
         torch.save(model.checkpoint(), f"{args.checkpoints}/{i}.pt")
@@ -123,4 +145,5 @@ def main():
 
 
 if __name__ == "__main__":
+    print(datetime.datetime.now())
     main()
