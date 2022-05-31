@@ -9,12 +9,11 @@ from pathlib import Path
 import numpy as np
 import torch
 
-import wandb
 from config.config import RANDOM_STATE, global_config
 
-__NO_CACHE__ = 0
-__USE_CACHE__ = 1
-__SAVE_CACHE__ = 2
+__NO_CACHE__ = "no"
+__USE_CACHE__ = "use"
+__SAVE_CACHE__ = "save"
 CACHE_PATH = "/home/yanhuize/kdd2022/dataset/cache"
 
 
@@ -50,14 +49,16 @@ def prep_env():
     )
     parser.add_argument(
         "--cache",
-        type=int,
+        type=str,
         default=__NO_CACHE__,
         help=f"{__NO_CACHE__}: no cache, {__USE_CACHE__}: use cache, {__SAVE_CACHE__}: save cache",
     )
+    parser.add_argument("--wandb", type=str, default="offline")
     namespace, extra = parser.parse_known_args()
 
     Path(namespace.checkpoints).mkdir(exist_ok=True)
     print("Checkpoints:", namespace.checkpoints)
+    global_config.init(namespace)
     return namespace
 
 
@@ -376,7 +377,7 @@ def wandb_plot(train_pred_records, val_pred_records, test_preds, test_gts):
             plot_dict[f"train_gt_{j}"] = train_pred_records[p][0][last_window_idx]
             plot_dict[f"train_pred_{j}"] = train_pred_records[p][1][last_window_idx]
 
-        wandb.log(plot_dict)
+        global_config.log(plot_dict)
 
     for i in range(288):
         from_batch = (
@@ -395,7 +396,7 @@ def wandb_plot(train_pred_records, val_pred_records, test_preds, test_gts):
             plot_dict[f"concat_train_gt_{j}"] = record[0][batch_window_idx]
             plot_dict[f"concat_train_pred_{j}"] = record[1][batch_window_idx]
 
-        wandb.log(plot_dict)
+        global_config.log(plot_dict)
 
 
 to_custom_names = {

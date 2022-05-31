@@ -1,8 +1,9 @@
+import datetime
+
 import numpy as np
 import torch
 
 import utils
-import wandb
 from callback import early_stopping, wandb_callback
 from config.config import global_config
 from data import data_loader, data_process, data_reader, data_split
@@ -15,8 +16,9 @@ utils.fix_random()
 
 
 def turbine_i(args) -> BaseModelApp:
+
     global_config.init_wandb()
-    print(wandb.config)
+    print(global_config)
 
     if args.cache == __NO_CACHE__ or args.cache == __SAVE_CACHE__:
         # read csv
@@ -46,10 +48,12 @@ def turbine_i(args) -> BaseModelApp:
                 (test_df, processor, train_ds, val_ds, test_ds),
                 "cache.pkl",
             )
+
     elif args.cache == __USE_CACHE__:
         test_df, processor, train_ds, val_ds, test_ds = utils.load_cache("cache.pkl")
 
     model_app = models.get(len(train_ds))
+    print(5, datetime.datetime.now())
 
     # train
     callbacks = [early_stopping.EarlyStopping(), wandb_callback.WandbCallback()]
@@ -99,28 +103,26 @@ def turbine_i(args) -> BaseModelApp:
     # utils.wandb_plot(train_pred_records, val_pred_records, test_preds, test_gts)
 
     rmse, mae, score = evaluate([test_preds], [test_gts], [test_df])
-    wandb.log({"rmse": rmse, "mae": mae, "score": score})
+    global_config.log({"rmse": rmse, "mae": mae, "score": score})
 
-    wandb.finish()
+    global_config.wandb_finish()
 
     return model_app, rmse, mae, score
 
 
 def main():
+    print(datetime.datetime.now())
     args = utils.prep_env()
-    global_config.init(args.exp_file, args.cache)
 
     scores = np.zeros((args.capacity, 3))
-    for i in range(args.capacity):
-        i += 1
+    for i in range(1, args.capacity + 1):
         print(">>>>>>>>>>>>>> turbine", i, "<<<<<<<<<<<<<<<<<<")
-
         global_config.turbine = i
         model, rmse, mae, score = turbine_i(args)
-
         scores[i - 1] = [rmse, mae, score]
         torch.save(model.checkpoint(), f"{args.checkpoints}/{i}.pt")
 
+    ########
     print(f"rmse: \n{scores[:, 0]} \nmae: \n{scores[:, 1]} \nscore: \n{scores[:, 2]}")
     print(
         f"rmse: {scores[:, 0].mean()}, mae: {scores[:, 1].mean()}, score: {scores[:, 2].mean()}"

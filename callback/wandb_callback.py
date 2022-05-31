@@ -1,7 +1,7 @@
 import numpy as np
 
-import wandb
 from callback.callback import Callback
+from config.config import global_config
 from model.base_model import BaseModelApp
 
 
@@ -21,7 +21,7 @@ class WandbCallback(Callback):
 
         # fpr, tpr, threshold = metrics.roc_curve(gts, preds)
         # roc_auc = metrics.auc(fpr, tpr)
-        # wandb.log({"roc_auc": roc_auc})
+        # global_config.log({"roc_auc": roc_auc})
 
         return True
 
@@ -36,7 +36,7 @@ class WandbCallback(Callback):
 
         self.val_epoch_losses.append(val_loss)
         self.train_epoch_losses.append(loss)
-        wandb.log(
+        global_config.log(
             {
                 "loss": loss,
                 "val_loss": val_loss,
@@ -48,7 +48,7 @@ class WandbCallback(Callback):
 
     def on_train_finish(self, model):
         for i in range(len(self.max_pred)):
-            wandb.log(
+            global_config.log(
                 {
                     "max_pred": self.max_pred[i],
                     "max_gt": self.max_gt,

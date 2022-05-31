@@ -5,10 +5,13 @@ ONLINE = False
 RANDOM_STATE = 42
 import wandb
 
+__WANDB_ONLINE__ = "online"
+__WANDB_OFFLINE__ = "offline"
+__WANDB_CLOSE__ = "close"
+
 
 class Config:
     def __init__(self) -> None:
-        self.wandb = False
         self.conf = {
             "~lr": 1e-4,
             "~batch_size": 128,
@@ -39,22 +42,38 @@ class Config:
             "mode": "online" if ONLINE else "offline",
         }
 
-    def init(self, exp_file: None, wandb: True):
-        if exp_file:
-            self.conf = json.load(open(exp_file))
-        self.wandb = wandb
+    def init(self, args):
+        if args.exp_file:
+            self.conf = json.load(open(args.exp_file))
+        self.wandb_conf["mode"] = args.wandb
+
+    @property
+    def wandb_enable(self):
+        return self.wandb_conf["mode"] != __WANDB_CLOSE__
 
     def init_wandb(self):
-        wandb.init(config=self.conf, **self.wandb_conf)
+        if self.wandb_enable:
+            wandb.init(config=self.conf, **self.wandb_conf)
+
+    def log(self, json):
+        if self.wandb_enable:
+            wandb.log(json)
+
+    def wandb_finish(self):
+        if self.wandb_enable:
+            wandb.finish()
 
     def __getattr__(self, name: str):
-        if self.wandb:
-            return global_config.get(name)
+        if self.wandb_enable:
+            return wandb.config[name]
         else:
             return self.conf[name]
 
     def __getitem__(self, key):
         return self.__getattr__(key)
+
+    def __str__(self) -> str:
+        return str(self.conf)
 
 
 global_config = Config()
