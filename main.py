@@ -1,29 +1,26 @@
-import json
-import sys
-
 import numpy as np
 import torch
 
 import utils
 import wandb
 from callback import early_stopping, wandb_callback
-from config import config
+from config.config import global_config
 from data import data_loader, data_process, data_reader, data_split
 from model import models
 from model.base_model import BaseModelApp
-from train import losses, train
+from train import train
 from utils import __NO_CACHE__, __SAVE_CACHE__, __USE_CACHE__, evaluate
 
 utils.fix_random()
 
 
-def turbine_i(settings, args) -> BaseModelApp:
-    wandb.init(config=settings, **config.__wandb__)
+def turbine_i(args) -> BaseModelApp:
+    global_config.init_wandb()
     print(wandb.config)
 
     if args.cache == __NO_CACHE__ or args.cache == __SAVE_CACHE__:
         # read csv
-        df = data_reader.DataReader(settings["turbine"]).train
+        df = data_reader.DataReader(global_config.turbine).train
 
         # split
         train_df, val_df, test_df = data_split.split(df)
@@ -59,7 +56,7 @@ def turbine_i(settings, args) -> BaseModelApp:
 
     # train_pred_records = []
     # val_pred_records = []
-    for epoch in range(wandb.config["~epochs"]):
+    for epoch in range(global_config["~epochs"]):
         train_losses, train_gts, train_preds = train.epoch_train(
             model_app,
             train_ds,
@@ -111,17 +108,15 @@ def turbine_i(settings, args) -> BaseModelApp:
 
 def main():
     args = utils.prep_env()
-    settings = (
-        json.load(open(args.exp_file)) if args.exp_file is not None else config.conf
-    )
+    global_config.init(args.exp_file, args.cache)
 
     scores = np.zeros((args.capacity, 3))
     for i in range(args.capacity):
         i += 1
         print(">>>>>>>>>>>>>> turbine", i, "<<<<<<<<<<<<<<<<<<")
 
-        settings["turbine"] = i
-        model, rmse, mae, score = turbine_i(settings, args)
+        global_config.turbine = i
+        model, rmse, mae, score = turbine_i(args)
 
         scores[i - 1] = [rmse, mae, score]
         torch.save(model.checkpoint(), f"{args.checkpoints}/{i}.pt")

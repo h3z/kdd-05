@@ -1,16 +1,16 @@
 import torch
 from torch import nn
 
-import wandb
+from config.config import global_config
 
 
 class SimpleGRU(nn.Module):
     def __init__(self):
         super().__init__()
-        self.hidden_size = wandb.config.hidden_size
-        self.num_layer = wandb.config.num_layer
-        self.output_timesteps = wandb.config.output_timesteps
-        self.input_size = wandb.config.input_size
+        self.hidden_size = global_config.hidden_size
+        self.num_layer = global_config.num_layer
+        self.output_timesteps = global_config.output_timesteps
+        self.input_size = global_config.input_size
 
         self.gru = nn.GRU(
             input_size=self.input_size,

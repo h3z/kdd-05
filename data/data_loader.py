@@ -5,17 +5,17 @@ import numpy as np
 import pandas as pd
 import torch
 
-import wandb
+from config.config import global_config
 from utils import feature_cols
 
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, data: np.ndarray):
-        self.input_timesteps = wandb.config.input_timesteps
+        self.input_timesteps = global_config.input_timesteps
         self.data = data
 
-        input_steps = wandb.config.input_timesteps
-        output_steps = wandb.config.output_timesteps
+        input_steps = global_config.input_timesteps
+        output_steps = global_config.output_timesteps
         self.total_timesteps = input_steps + output_steps
         self.len = len(data) - self.total_timesteps + 1
 
@@ -34,7 +34,7 @@ class Sampler(torch.utils.data.Sampler):
     def __init__(self, data: np.ndarray, shuffle: bool) -> None:
         super().__init__(data)
 
-        total_timesteps = wandb.config.input_timesteps + wandb.config.output_timesteps
+        total_timesteps = global_config.input_timesteps + global_config.output_timesteps
         self.len = len(data) - total_timesteps + 1
         self.shuffle = shuffle
 
@@ -53,7 +53,7 @@ class DataLoader:
 
         df = df[feature_cols]
         # smaller size for training
-        if wandb.config.data_version == "small" and is_train:
+        if global_config.data_version == "small" and is_train:
             self.data = df.values[: len(df) // 30]
         else:
             self.data = df.values
@@ -63,7 +63,7 @@ class DataLoader:
         dataset = Dataset(self.data)
 
         sampler = Sampler(self.data, shuffle=self.is_train)
-        batch_size = wandb.config["~batch_size"] if self.is_train else len(dataset)
+        batch_size = global_config["~batch_size"] if self.is_train else len(dataset)
 
         return torch.utils.data.DataLoader(
             dataset=dataset,

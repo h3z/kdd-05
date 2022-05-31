@@ -10,7 +10,7 @@ import numpy as np
 import torch
 
 import wandb
-from config.config import RANDOM_STATE
+from config.config import RANDOM_STATE, global_config
 
 __NO_CACHE__ = 0
 __USE_CACHE__ = 1
@@ -364,7 +364,7 @@ def regressor_metrics(pred, gt):
 
 def wandb_plot(train_pred_records, val_pred_records, test_preds, test_gts):
     # plot gt & pred (last window)
-    for i in range(wandb.config.output_timesteps):
+    for i in range(global_config.output_timesteps):
         plot_dict = {}
         last_window_idx = (-1, i, 0)
         plot_dict["test_gt"] = test_gts[last_window_idx]
@@ -379,8 +379,10 @@ def wandb_plot(train_pred_records, val_pred_records, test_preds, test_gts):
         wandb.log(plot_dict)
 
     for i in range(288):
-        from_batch = i // wandb.config.output_timesteps * wandb.config.output_timesteps
-        batch_pred_i = i % wandb.config.output_timesteps
+        from_batch = (
+            i // global_config.output_timesteps * global_config.output_timesteps
+        )
+        batch_pred_i = i % global_config.output_timesteps
         batch_window_idx = (from_batch, batch_pred_i, 0)
         plot_dict = {}
         plot_dict["concat_test_gt"] = test_gts[batch_window_idx]

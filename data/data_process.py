@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 import utils
-import wandb
+from config.config import global_config
 
 
 class Scaler:
@@ -11,10 +11,10 @@ class Scaler:
         return
 
     def fit(self, data):
-        if wandb.config.scaler == "each_col":
+        if global_config.scaler == "each_col":
             self.mean = np.mean(data, axis=0)
             self.std = np.std(data, axis=0)
-        elif wandb.config.scaler == "all_col":
+        elif global_config.scaler == "all_col":
             self.mean = np.mean(data)
             self.std = np.std(data)
 
@@ -24,9 +24,9 @@ class Scaler:
         return (data - self.mean) / self.std
 
     def inverse_transform(self, data):
-        if wandb.config.scaler == "each_col":
+        if global_config.scaler == "each_col":
             return (data * self.std[-1]) + self.mean[-1]
-        elif wandb.config.scaler == "all_col":
+        elif global_config.scaler == "all_col":
             return (data * self.std) + self.mean
 
 
@@ -47,8 +47,8 @@ class DataProcess:
         df.active_power = df.active_power.clip(lower=0)
         df.reactive_power = df.reactive_power.clip(lower=0)
 
-        if wandb.config.truncate > 0:
-            p = wandb.config.truncate
+        if global_config.truncate > 0:
+            p = global_config.truncate
             for i in utils.feature_cols:
                 lower = df[i].quantile(1 - p)
                 upper = df[i].quantile(p)

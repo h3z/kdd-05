@@ -2,14 +2,14 @@ import numpy as np
 import torch
 
 import utils
-import wandb
 from callback.callback import Callback
+from config.config import global_config
 from model.base_model import BaseModelApp
 
 
 class EarlyStopping(Callback):
     def __init__(self) -> None:
-        self.patience = wandb.config["~early_stopping_patience"]
+        self.patience = global_config["~early_stopping_patience"]
         self.min_loss = np.inf
         self.counter = 0
         self.best_state_dict = None

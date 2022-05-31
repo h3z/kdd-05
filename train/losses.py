@@ -1,10 +1,10 @@
 import torch
 
-import wandb
+from config.config import global_config
 
 
 def get():
-    if wandb.config["~loss"] == "mse":
+    if global_config["~loss"] == "mse":
         return torch.nn.MSELoss()
-    elif wandb.config["~loss"] == "bce":
+    elif global_config["~loss"] == "bce":
         return torch.nn.BCELoss()

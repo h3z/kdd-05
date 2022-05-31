@@ -4,15 +4,15 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-import wandb
+from config.config import global_config
 from model import seq2seq
 
 
 class EncoderRNN(nn.Module):
     def __init__(self):
         super(EncoderRNN, self).__init__()
-        self.hidden_size = wandb.config.hidden_size
-        self.num_layer = wandb.config.num_layer
+        self.hidden_size = global_config.hidden_size
+        self.num_layer = global_config.num_layer
         self.gru = nn.GRU(
             10, self.hidden_size, num_layers=self.num_layer, batch_first=True
         )
@@ -28,8 +28,8 @@ class EncoderRNN(nn.Module):
 class DecoderRNN(nn.Module):
     def __init__(self):
         super(DecoderRNN, self).__init__()
-        hidden_size = wandb.config.hidden_size
-        num_layer = wandb.config.num_layer
+        hidden_size = global_config.hidden_size
+        num_layer = global_config.num_layer
         self.gru = nn.GRU(1, hidden_size, num_layers=num_layer, batch_first=True)
         self.out = nn.Linear(hidden_size, 1)
 
@@ -43,12 +43,12 @@ class DecoderRNN(nn.Module):
 class AttnDecoderRNN(nn.Module):
     def __init__(self):
         super(AttnDecoderRNN, self).__init__()
-        self.hidden_size = wandb.config.hidden_size
-        num_layer = wandb.config.num_layer
+        self.hidden_size = global_config.hidden_size
+        num_layer = global_config.num_layer
         output_size = 1
 
         self.attn = nn.Linear(
-            self.hidden_size + output_size, wandb.config.input_timesteps
+            self.hidden_size + output_size, global_config.input_timesteps
         )
         self.attn_combine = nn.Linear(self.hidden_size + output_size, self.hidden_size)
         self.gru = nn.GRU(
