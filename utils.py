@@ -45,7 +45,9 @@ def prep_env():
     parser = argparse.ArgumentParser()
     parser.add_argument("--capacity", type=int, default=1)
     parser.add_argument("--exp_file", type=str)
-    parser.add_argument("--checkpoints", type=str, default=f"checkpoints_{timestamp}")
+    parser.add_argument(
+        "--checkpoints", type=str, default=f"checkpoints/checkpoints_{timestamp}"
+    )
     parser.add_argument(
         "--cache",
         type=int,

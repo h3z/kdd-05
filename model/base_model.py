@@ -1,10 +1,11 @@
-from train import optimizers, schedulers
+from train import losses, optimizers, schedulers
 
 
 class BaseModelApp:
     def __init__(self, *models) -> None:
         self.model = models[0]
         self.opt = optimizers.get(self.model)
+        self.loss = losses.get()
         self.scheduler = None
 
     def zero_grad(self):
@@ -32,3 +33,6 @@ class BaseModelApp:
 
     def eval(self):
         self.model.eval()
+
+    def criterion(self, pred_y, batch_y):
+        return self.loss(pred_y, batch_y)

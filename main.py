@@ -1,4 +1,3 @@
-import datetime
 import json
 import sys
 
@@ -18,25 +17,11 @@ from utils import __NO_CACHE__, __SAVE_CACHE__, __USE_CACHE__, evaluate
 utils.fix_random()
 
 
-class TMP:
-    def __init__(self) -> None:
-        self.t = datetime.datetime.now()
-
-    def print(self, t):
-        print(datetime.datetime.now() - self.t, t)
-        self.t = datetime.datetime.now()
-
-
-t = TMP()
-
-
 def turbine_i(settings, args) -> BaseModelApp:
     wandb.init(config=settings, **config.__wandb__)
     print(wandb.config)
 
-    if args.cache == __USE_CACHE__:
-        train_df, val_df, test_df, processor = utils.load_cache("cache.pkl")
-    elif args.cache == __NO_CACHE__ or args.cache == __SAVE_CACHE__:
+    if args.cache == __NO_CACHE__ or args.cache == __SAVE_CACHE__:
         # read csv
         df = data_reader.DataReader(settings["turbine"]).train
 
@@ -53,38 +38,41 @@ def turbine_i(settings, args) -> BaseModelApp:
         val_df = processor.preprocess(val_df)
         test_df = processor.preprocess(test_df)
 
+        # torch DataLoader
+        train_ds = data_loader.DataLoader(train_df, is_train=True).get()
+        val_ds = data_loader.DataLoader(val_df).get()
+        test_ds = data_loader.DataLoader(test_df).get()
+
         if args.cache == __SAVE_CACHE__:
             # 会覆盖
-            utils.save_cache((train_df, val_df, test_df, processor), "cache.pkl")
+            utils.save_cache(
+                (test_df, processor, train_ds, val_ds, test_ds),
+                "cache.pkl",
+            )
+    elif args.cache == __USE_CACHE__:
+        test_df, processor, train_ds, val_ds, test_ds = utils.load_cache("cache.pkl")
 
-    # torch DataLoader
-    train_ds = data_loader.DataLoader(train_df, is_train=True).get()
-    val_ds = data_loader.DataLoader(val_df).get()
-    test_ds = data_loader.DataLoader(test_df).get()
-
-    # model = models.get()
     model_app = models.get(len(train_ds))
 
     # train
-    criterion = losses.get()
     callbacks = [early_stopping.EarlyStopping(), wandb_callback.WandbCallback()]
 
     # train_pred_records = []
     # val_pred_records = []
     for epoch in range(wandb.config["~epochs"]):
-        t.print("next")
-        train_loss, train_gts, train_preds = train.epoch_train(
+        train_losses, train_gts, train_preds = train.epoch_train(
             model_app,
             train_ds,
-            criterion,
             callbacks,
         )
-        val_loss, val_gts, val_preds = train.epoch_val(
+        val_losses, val_gts, val_preds = train.epoch_val(
             model_app,
             val_ds,
-            criterion,
             callbacks,
         )
+
+        train_loss = torch.stack(train_losses).mean().item()
+        val_loss = torch.stack(val_losses).mean().item()
         print(epoch, ": train_loss", train_loss, "val_loss", val_loss)
 
         # train_pred_records.append((train_gts, train_preds))
@@ -145,5 +133,4 @@ def main():
 
 
 if __name__ == "__main__":
-    print(datetime.datetime.now())
     main()

@@ -45,6 +45,7 @@ class DecoderRNN(nn.Module):
 
 class ModelApp(BaseModelApp):
     def __init__(self, *models) -> None:
+        super().__init__(models)
         self.encoder = models[0]
         self.decoder = models[1]
         self.enc_optimizer = optimizers.get(self.encoder)
