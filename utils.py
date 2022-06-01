@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from config import config
 from config.config import RANDOM_STATE, global_config
 
 __NO_CACHE__ = "no"
@@ -53,10 +54,15 @@ def prep_env():
         default=__NO_CACHE__,
         help=f"{__NO_CACHE__}: no cache, {__USE_CACHE__}: use cache, {__SAVE_CACHE__}: save cache",
     )
-    parser.add_argument("--wandb", type=str, default="offline")
+    parser.add_argument(
+        "--wandb", type=str, default="offline", help="online, offline, close"
+    )
     namespace, extra = parser.parse_known_args()
 
-    Path(namespace.checkpoints).mkdir(exist_ok=True)
+    if config.IS_DEBUG:
+        for k in config.DEBUG_CONFIG:
+            namespace.__setattr__(k, config.DEBUG_CONFIG[k])
+    Path(namespace.checkpoints).mkdir(exist_ok=True, parents=True)
     print("Checkpoints:", namespace.checkpoints)
     global_config.init(namespace)
     return namespace

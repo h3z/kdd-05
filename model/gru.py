@@ -23,11 +23,12 @@ class SimpleGRU(nn.Module):
 
     def forward(self, input):
         batch = input.shape[0]
-        x = torch.zeros([batch, self.output_timesteps, input.shape[2]]).to("cuda:0")
+        x = torch.zeros([batch, self.output_timesteps, input.shape[2]]).to("cuda")
         x = torch.concat((input, x), 1)
 
         hidden = torch.zeros(self.num_layer, batch, self.hidden_size).to("cuda")
         output, hidden = self.gru(x, hidden)
+
         # output = self.dropout(output)
         output = self.projection(output)
 

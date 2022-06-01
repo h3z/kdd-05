@@ -9,6 +9,12 @@ __WANDB_ONLINE__ = "online"
 __WANDB_OFFLINE__ = "offline"
 __WANDB_CLOSE__ = "close"
 
+IS_DEBUG = False
+DEBUG_CONFIG = {
+    "exp_file": "experiments/sweep-hqi-70.json",
+    "wandb": "close",
+}
+
 
 class Config:
     def __init__(self) -> None:
