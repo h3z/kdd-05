@@ -1,0 +1,21 @@
+{
+    "~lr": 0.01,
+    "~batch_size": 256,
+    "~epochs": 20,
+    "~early_stopping_patience": 5,
+    "~optimizer": "adam",
+    "~loss": "mse",
+    "scheduler": "linear",
+    "warmup": 0.1,
+    "teacher_forcing_ratio": 0.5,
+    "data_version": "full",
+    "scaler": "all_col",
+    "truncate": 0.98,
+    "input_size": 10,
+    "input_timesteps": 2016,
+    "output_timesteps": 288,
+    "model": "gru",
+    "hidden_size": 48,
+    "num_layer": 3,
+    "turbine": 1
+}

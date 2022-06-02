@@ -114,12 +114,12 @@ def main():
     print(datetime.datetime.now())
     args = utils.prep_env()
 
-    scores = np.zeros((args.capacity, 3))
-    for i in range(1, args.capacity + 1):
+    scores = np.zeros((args.capacity_to - args.capacity_from, 3))
+    for i in range(args.capacity_from + 1, args.capacity_to + 1):
         print(">>>>>>>>>>>>>> turbine", i, "<<<<<<<<<<<<<<<<<<")
         global_config.turbine = i
         model, rmse, mae, score = turbine_i(args)
-        scores[i - 1] = [rmse, mae, score]
+        scores[i - args.capacity_from - 1] = [rmse, mae, score]
         torch.save(model.checkpoint(), f"{args.checkpoints}/{i}.pt")
 
     ########

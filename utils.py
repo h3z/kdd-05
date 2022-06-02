@@ -43,7 +43,8 @@ def prep_env():
     timestamp = int(datetime.timestamp(datetime.now()))
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--capacity", type=int, default=1)
+    parser.add_argument("--capacity_to", type=int, default=1)
+    parser.add_argument("--capacity_from", type=int, default=0)
     parser.add_argument("--exp_file", type=str)
     parser.add_argument(
         "--checkpoints", type=str, default=f"checkpoints/checkpoints_{timestamp}"
