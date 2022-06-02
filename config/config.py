@@ -10,8 +10,9 @@ __WANDB_OFFLINE__ = "offline"
 __WANDB_CLOSE__ = "close"
 
 IS_DEBUG = False
+# IS_DEBUG = True
 DEBUG_CONFIG = {
-    "exp_file": "experiments/sweep-hqi-70.json",
+    "exp_file": "experiments/attn-seq2seq-14day.json.tmp",
     "wandb": "close",
 }
 
@@ -29,7 +30,7 @@ class Config:
             "warmup": 0.1,
             "teacher_forcing_ratio": 0.5,
             # data
-            "data_version": "full",  # small, full
+            "data_version": "all_turbines",  # small, full, all_turbines
             "scaler": "all_col",  # each_col, all_col
             "truncate": 0.98,
             "input_size": 10,

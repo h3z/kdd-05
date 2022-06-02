@@ -7,7 +7,7 @@ from config.config import global_config
 from utils import DATA_SPLIT_SIZE
 
 
-def split(df: pd.DataFrame) -> List[pd.DataFrame]:
+def split_one(df: pd.DataFrame) -> List[pd.DataFrame]:
 
     train_size = DATA_SPLIT_SIZE["train_size"]
     val_size = DATA_SPLIT_SIZE["val_size"]
@@ -28,3 +28,16 @@ def split(df: pd.DataFrame) -> List[pd.DataFrame]:
     for i in range(3):
         res.append(df[borders1[i] : borders2[i]])
     return res
+
+
+def split(df: pd.DataFrame) -> List[pd.DataFrame]:
+    if global_config.data_version == "all_turbines":
+        trains, vals, tests = [], [], []
+        for i in df.id.unique():
+            train, val, test = split_one(df.query("id == @i"))
+            trains.append(train)
+            vals.append(val)
+            tests.append(test)
+        return pd.concat(trains), pd.concat(vals), pd.concat(tests)
+    else:
+        return split_one(df)

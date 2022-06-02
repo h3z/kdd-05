@@ -17,7 +17,10 @@ class Dataset(torch.utils.data.Dataset):
         input_steps = global_config.input_timesteps
         output_steps = global_config.output_timesteps
         self.total_timesteps = input_steps + output_steps
-        self.len = len(data) - self.total_timesteps + 1
+        if global_config.data_version == "all_turbines":
+            self.len = len(data) - (self.total_timesteps - 1) * 134
+        else:
+            self.len = len(data) - (self.total_timesteps - 1)
 
     def __getitem__(self, index):
         mid = index + self.input_timesteps
@@ -34,8 +37,10 @@ class Sampler(torch.utils.data.Sampler):
     def __init__(self, data: np.ndarray, shuffle: bool) -> None:
         super().__init__(data)
 
-        total_timesteps = global_config.input_timesteps + global_config.output_timesteps
-        self.len = len(data) - total_timesteps + 1
+        self.total_timesteps = (
+            global_config.input_timesteps + global_config.output_timesteps
+        )
+        self.len = len(data) - self.total_timesteps + 1
         self.shuffle = shuffle
 
     def __iter__(self) -> List[int]:
@@ -45,6 +50,25 @@ class Sampler(torch.utils.data.Sampler):
 
     def __len__(self) -> int:
         return self.len
+
+
+class AllTurbinesSampler(Sampler):
+    def __init__(self, data: np.ndarray, shuffle: bool) -> None:
+        super().__init__(data, shuffle)
+
+        self.data_len = len(data)
+        self.len = len(data) - (self.total_timesteps - 1) * 134
+        self.shuffle = shuffle
+
+    def __iter__(self) -> List[int]:
+        if self.shuffle:
+            lst = torch.randperm(self.data_len).tolist()
+        else:
+            lst = list(self.data_len)
+
+        each_turbine = self.data_len / 134
+        threshold = each_turbine - (self.total_timesteps - 1)
+        return iter([i for i in lst if i % each_turbine < threshold])
 
 
 class DataLoader:
@@ -62,7 +86,11 @@ class DataLoader:
     def get(self) -> torch.utils.data.DataLoader:
         dataset = Dataset(self.data)
 
-        sampler = Sampler(self.data, shuffle=self.is_train)
+        if global_config.data_version == "all_turbines":
+            sampler = AllTurbinesSampler(self.data, shuffle=self.is_train)
+        else:
+            sampler = Sampler(self.data, shuffle=self.is_train)
+
         batch_size = global_config["~batch_size"] if self.is_train else len(dataset)
 
         return torch.utils.data.DataLoader(

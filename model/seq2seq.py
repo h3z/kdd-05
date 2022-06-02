@@ -5,7 +5,7 @@ from torch import nn
 
 from config.config import global_config
 from model.base_model import BaseModelApp
-from train import optimizers, schedulers
+from train import losses, optimizers, schedulers
 
 
 class EncoderRNN(nn.Module):
@@ -45,13 +45,13 @@ class DecoderRNN(nn.Module):
 
 class ModelApp(BaseModelApp):
     def __init__(self, *models) -> None:
-        super().__init__(models)
         self.encoder = models[0]
         self.decoder = models[1]
         self.enc_optimizer = optimizers.get(self.encoder)
         self.dec_optimizer = optimizers.get(self.decoder)
         self.enc_scheduler = None
         self.dec_scheduler = None
+        self.loss = losses.get()
 
         self.teacher_forcing_ratio = global_config.teacher_forcing_ratio
 
