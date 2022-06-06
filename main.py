@@ -18,6 +18,13 @@ utils.fix_random()
 def turbine_i(args) -> BaseModelApp:
 
     global_config.init_wandb()
+    try:
+        torch.distributed.init_process_group(backend="nccl")
+        torch.cuda.set_device(torch.distributed.get_rank())
+        global_config.distributed = True
+    except:
+        global_config.distributed = False
+
     print(global_config)
 
     if args.cache == __NO_CACHE__ or args.cache == __SAVE_CACHE__:
@@ -91,12 +98,11 @@ def turbine_i(args) -> BaseModelApp:
     # post process
     test_preds = processor.postprocess(test_preds)[..., -1:]
     # test_gts = processor.postprocess(test_gts)[..., -1:]
-    test_gts = (
-        iter(data_loader.DataLoader(origin_test_df).get())
-        .next()[1]
-        .cpu()
-        .detach()
-        .numpy()
+    test_gts = np.concatenate(
+        [
+            batch[1].cpu().detach().numpy()
+            for batch in data_loader.DataLoader(origin_test_df).get()
+        ]
     )
     test_df = test_df.rename(columns=utils.to_origin_names)
 

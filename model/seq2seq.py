@@ -22,7 +22,7 @@ class EncoderRNN(nn.Module):
 
     def forward(self, input):
         batch = input.shape[0]
-        hidden = torch.zeros(self.num_layer, batch, self.hidden_size).to("cuda")
+        hidden = torch.zeros(self.num_layer, batch, self.hidden_size).cuda()
 
         output, hidden = self.gru(input, hidden)
         return output, hidden
@@ -47,6 +47,10 @@ class ModelApp(BaseModelApp):
     def __init__(self, *models) -> None:
         self.encoder = models[0]
         self.decoder = models[1]
+        if global_config.distributed:
+            self.encoder = torch.nn.parallel.DistributedDataParallel(self.encoder)
+            self.decoder = torch.nn.parallel.DistributedDataParallel(self.decoder)
+
         self.enc_optimizer = optimizers.get(self.encoder)
         self.dec_optimizer = optimizers.get(self.decoder)
         self.enc_scheduler = None

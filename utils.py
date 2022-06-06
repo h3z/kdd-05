@@ -1,4 +1,5 @@
 import argparse
+import os
 import pickle
 import random
 import tempfile
@@ -66,6 +67,7 @@ def prep_env():
     Path(namespace.checkpoints).mkdir(exist_ok=True, parents=True)
     print("Checkpoints:", namespace.checkpoints)
     global_config.init(namespace)
+
     return namespace
 
 

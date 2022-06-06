@@ -19,7 +19,7 @@ class EncoderRNN(nn.Module):
 
     def forward(self, input):
         batch = input.shape[0]
-        hidden = torch.zeros(self.num_layer, batch, self.hidden_size).to("cuda")
+        hidden = torch.zeros(self.num_layer, batch, self.hidden_size).cuda()
 
         output, hidden = self.gru(input, hidden)
         return output, hidden

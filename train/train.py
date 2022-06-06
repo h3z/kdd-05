@@ -17,8 +17,8 @@ def epoch_train(model_app: BaseModelApp, train_loader, callbacks: List[Callback]
     for i, (batch_x, batch_y) in (
         pbar := tqdm(enumerate(train_loader), total=len(train_loader), unit=" batch")
     ):
-        batch_x = batch_x.to(torch.float32).to("cuda")
-        batch_y = batch_y.to(torch.float32).to("cuda")
+        batch_x = batch_x.to(torch.float32).cuda()
+        batch_y = batch_y.to(torch.float32).cuda()
 
         model_app.zero_grad()
         pred_y = model_app.forward(batch_x, batch_y, is_training=True)
@@ -41,19 +41,22 @@ def epoch_train(model_app: BaseModelApp, train_loader, callbacks: List[Callback]
     )
 
 
-def epoch_val(
-    model_app: BaseModelApp, val_loader, criterion, callbacks: List[Callback] = []
-):
-    model_app.eval()
+def epoch_val(model_app: BaseModelApp, val_loader, callbacks: List[Callback] = []):
 
-    validation_losses = []
-    for i, (batch_x, batch_y) in enumerate(val_loader):
-        batch_x = batch_x.to(torch.float32).to("cuda")
-        batch_y = batch_y.to(torch.float32).to("cuda")
-        pred_y = model_app.forward(batch_x, batch_y)
-        loss = model_app.criterion(pred_y, batch_y)
-        validation_losses.append(loss)
-        [cb.on_val_end(pred_y, batch_y, loss) for cb in callbacks]
+    with torch.no_grad():
+        model_app.eval()
+
+        validation_losses = []
+        for i, (batch_x, batch_y) in tqdm(
+            enumerate(val_loader), total=len(val_loader), unit=" batch"
+        ):
+            batch_x = batch_x.to(torch.float32).cuda()
+            batch_y = batch_y.to(torch.float32).cuda()
+            pred_y = model_app.forward(batch_x, batch_y)
+            loss = model_app.criterion(pred_y, batch_y)
+            validation_losses.append(loss)
+
+    [cb.on_val_end(pred_y, batch_y, loss) for cb in callbacks]
 
     return (
         validation_losses,
@@ -63,20 +66,22 @@ def epoch_val(
 
 
 def predict(model_app: BaseModelApp, test_loader):
-    model_app.eval()
+    with torch.no_grad():
 
-    preds = []
-    gts = []
-    for i, (batch_x, batch_y) in enumerate(test_loader):
-        batch_x = batch_x.to(torch.float32).to("cuda")
-        batch_y = batch_y.to(torch.float32).to("cuda")
-        pred_y = model_app.forward(batch_x, batch_y)
+        model_app.eval()
 
-        preds.append(pred_y.cpu().detach().numpy())
-        gts.append(batch_y.cpu().detach().numpy())
+        preds = []
+        gts = []
+        for i, (batch_x, batch_y) in tqdm(
+            enumerate(test_loader), total=len(test_loader), unit=" batch"
+        ):
+            batch_x = batch_x.to(torch.float32).cuda()
+            batch_y = batch_y.to(torch.float32).cuda()
+            pred_y = model_app.forward(batch_x, batch_y)
 
-    preds = np.array(preds)
-    preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
-    gts = np.array(gts)
-    gts = gts.reshape(-1, gts.shape[-2], gts.shape[-1])
+            preds.append(pred_y.cpu().detach().numpy())
+            gts.append(batch_y.cpu().detach().numpy())
+
+    preds = np.concatenate(preds)
+    gts = np.concatenate(gts)
     return preds, gts

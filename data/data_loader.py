@@ -34,41 +34,56 @@ class Dataset(torch.utils.data.Dataset):
 
 
 class Sampler(torch.utils.data.Sampler):
-    def __init__(self, data: np.ndarray, shuffle: bool) -> None:
+    def __init__(self, data: np.ndarray, is_train: bool) -> None:
         super().__init__(data)
+        self.is_train = is_train
+
+        if global_config.distributed:
+            self.rank = torch.distributed.get_rank()
+            self.num_replicas = torch.distributed.get_world_size()
+        else:
+            self.rank = 0
+            self.num_replicas = 1
 
         self.total_timesteps = (
             global_config.input_timesteps + global_config.output_timesteps
         )
-        self.len = len(data) - self.total_timesteps + 1
-        self.shuffle = shuffle
+        self.total_len = len(data) - self.total_timesteps + 1
+        self.len = self.total_len // self.num_replicas
 
     def __iter__(self) -> List[int]:
-        if self.shuffle:
-            return iter(torch.randperm(self.len).tolist())
-        return iter(range(self.len))
+        if self.is_train:
+            lst = torch.randperm(self.total_len).tolist()
+        else:
+            lst = list(range(self.total_len))
+
+        return iter(self.distributed(lst) if self.is_train else lst)
+
+    def distributed(self, lst):
+        return lst[self.rank : len(lst) : self.num_replicas]
+        # return lst[self.rank : len(lst) : self.num_replicas]
 
     def __len__(self) -> int:
         return self.len
 
 
 class AllTurbinesSampler(Sampler):
-    def __init__(self, data: np.ndarray, shuffle: bool) -> None:
-        super().__init__(data, shuffle)
+    def __init__(self, data: np.ndarray, is_train: bool) -> None:
+        super().__init__(data, is_train)
 
+        total_len = len(data) - (self.total_timesteps - 1) * 134
+        self.len = total_len // self.num_replicas
         self.data_len = len(data)
-        self.len = len(data) - (self.total_timesteps - 1) * 134
-        self.shuffle = shuffle
 
     def __iter__(self) -> List[int]:
-        if self.shuffle:
+        if self.is_train:
             lst = torch.randperm(self.data_len).tolist()
         else:
-            lst = list(self.data_len)
-
+            lst = list(range(self.data_len))
         each_turbine = self.data_len / 134
         threshold = each_turbine - (self.total_timesteps - 1)
-        return iter([i for i in lst if i % each_turbine < threshold])
+        lst = [i for i in lst if i % each_turbine < threshold]
+        return iter(self.distributed(lst) if self.is_train else lst)
 
 
 class DataLoader:
@@ -81,22 +96,20 @@ class DataLoader:
             self.data = df.values[: len(df) // 30]
         else:
             self.data = df.values
-        self.data = torch.tensor(self.data).to(torch.float32).to("cuda")
+        self.data = torch.tensor(self.data).to(torch.float32).cuda()
 
     def get(self) -> torch.utils.data.DataLoader:
         dataset = Dataset(self.data)
 
         if global_config.data_version == "all_turbines":
-            sampler = AllTurbinesSampler(self.data, shuffle=self.is_train)
+            sampler = AllTurbinesSampler(self.data, is_train=self.is_train)
         else:
-            sampler = Sampler(self.data, shuffle=self.is_train)
-
-        batch_size = global_config["~batch_size"] if self.is_train else len(dataset)
+            sampler = Sampler(self.data, is_train=self.is_train)
 
         return torch.utils.data.DataLoader(
             dataset=dataset,
             sampler=sampler,
-            batch_size=batch_size,
+            batch_size=global_config["~batch_size"],
             drop_last=self.is_train,
             num_workers=0,
             # pin_memory=True,

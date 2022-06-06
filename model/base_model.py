@@ -1,9 +1,16 @@
+import torch
+
+from config.config import global_config
 from train import losses, optimizers, schedulers
 
 
 class BaseModelApp:
     def __init__(self, *models) -> None:
         self.model = models[0]
+
+        if global_config.distributed:
+            self.model = torch.nn.parallel.DistributedDataParallel(self.model)
+
         self.opt = optimizers.get(self.model)
         self.loss = losses.get()
         self.scheduler = None
