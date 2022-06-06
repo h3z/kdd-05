@@ -30,7 +30,7 @@ def epoch_train(model_app: BaseModelApp, train_loader, callbacks: List[Callback]
         losses.append(loss)
         # pbar.set_description(f"loss: {loss.item():.4f}")
 
-        [cb.on_train_batch_end(pred_y, batch_y, loss.item()) for cb in callbacks]
+        [cb.on_train_batch_end(pred_y, batch_y, loss) for cb in callbacks]
 
     # pbar.set_description(f"{np.mean(losses):.4f}")
 

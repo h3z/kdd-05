@@ -52,15 +52,13 @@ def turbine_i(args) -> BaseModelApp:
         if args.cache == __SAVE_CACHE__:
             # 会覆盖
             utils.save_cache(
-                (test_df, processor, train_ds, val_ds, test_ds),
-                "cache.pkl",
+                (test_df, processor, train_ds, val_ds, test_ds), "cache.pkl"
             )
 
     elif args.cache == __USE_CACHE__:
         test_df, processor, train_ds, val_ds, test_ds = utils.load_cache("cache.pkl")
 
     model_app = models.get(len(train_ds))
-    print(5, datetime.datetime.now())
 
     # train
     callbacks = [early_stopping.EarlyStopping(), wandb_callback.WandbCallback()]
