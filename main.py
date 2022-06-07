@@ -18,13 +18,6 @@ utils.fix_random()
 def turbine_i(args) -> BaseModelApp:
 
     global_config.init_wandb()
-    try:
-        torch.distributed.init_process_group(backend="nccl")
-        torch.cuda.set_device(torch.distributed.get_rank())
-        global_config.distributed = True
-    except:
-        global_config.distributed = False
-
     print(global_config)
 
     if args.cache == __NO_CACHE__ or args.cache == __SAVE_CACHE__:
@@ -124,7 +117,13 @@ def main():
         global_config.turbine = i
         model, rmse, mae, score = turbine_i(args)
         scores[i - args.capacity_from - 1] = [rmse, mae, score]
-        torch.save(model.checkpoint(), f"{args.checkpoints}/{i}.pt")
+
+        f_name = (
+            f"{args.checkpoints}/{i}_{torch.distributed.get_rank()}.pt"
+            if global_config.distributed
+            else f"{args.checkpoints}/{i}.pt"
+        )
+        torch.save(model.checkpoint(), f_name)
 
     ########
     print(f"rmse: \n{scores[:, 0]} \nmae: \n{scores[:, 1]} \nscore: \n{scores[:, 2]}")

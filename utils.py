@@ -66,7 +66,14 @@ def prep_env():
             namespace.__setattr__(k, config.DEBUG_CONFIG[k])
     Path(namespace.checkpoints).mkdir(exist_ok=True, parents=True)
     print("Checkpoints:", namespace.checkpoints)
+
     global_config.init(namespace)
+    try:
+        torch.distributed.init_process_group(backend="nccl")
+        torch.cuda.set_device(torch.distributed.get_rank())
+        global_config.distributed = True
+    except:
+        global_config.distributed = False
 
     return namespace
 
