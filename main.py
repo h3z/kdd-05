@@ -120,9 +120,9 @@ def main():
         scores[i - args.capacity_from - 1] = [rmse, mae, score]
 
         f_name = (
-            f"{args.checkpoints}/{i}_{torch.distributed.get_rank()}.pt"
+            f"{global_config.checkpoints_dir}/{i}_{torch.distributed.get_rank()}.pt"
             if global_config.distributed
-            else f"{args.checkpoints}/{i}.pt"
+            else f"{global_config.checkpoints_dir}/{i}.pt"
         )
         torch.save(model.checkpoint(), f_name)
 

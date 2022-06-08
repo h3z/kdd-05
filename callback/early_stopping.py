@@ -34,6 +34,13 @@ class EarlyStopping(Callback):
         return not stop
 
     def on_train_finish(self, model: BaseModelApp):
+        f_name = f"{global_config.checkpoints_dir}/{global_config.turbine}"
+        torch.save(
+            model.checkpoint(),
+            f_name
+            + f"_{torch.distributed.get_rank() if global_config.distributed else 0}_last.pt",
+        )
+
         model.load_checkpoint(self.best_state_dict)
         f = utils.mktemp("best_model.pth")
         torch.save(self.best_state_dict, f)

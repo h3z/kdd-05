@@ -21,6 +21,10 @@ class Scaler:
             # 方便打分时，预处理值固定
             self.mean = global_config.__mean__
             self.std = global_config.__std__
+        elif global_config.scaler == "all_turbines_all_col":
+            # 方便打分时，预处理值固定
+            self.mean = 68.12220790619038
+            self.std = 186.9209197502287
 
         # print(f"mean: {self.mean}", f"std: {self.std}")
 
@@ -30,9 +34,7 @@ class Scaler:
     def inverse_transform(self, data):
         if global_config.scaler == "each_col":
             return (data * self.std[-1]) + self.mean[-1]
-        elif global_config.scaler == "all_col":
-            return (data * self.std) + self.mean
-        elif global_config.scaler == "constant":
+        elif global_config.scaler in ["all_col", "constant", "all_turbines_all_col"]:
             return (data * self.std) + self.mean
 
 
