@@ -114,7 +114,8 @@ def main():
     scores = np.zeros((args.capacity_to - args.capacity_from, 3))
     for i in range(args.capacity_from + 1, args.capacity_to + 1):
         print(">>>>>>>>>>>>>> turbine", i, "<<<<<<<<<<<<<<<<<<")
-        global_config.turbine = i
+        if global_config.data_version != "all_turbines":
+            global_config.turbine = i
         model, rmse, mae, score = turbine_i(args)
         scores[i - args.capacity_from - 1] = [rmse, mae, score]
 
