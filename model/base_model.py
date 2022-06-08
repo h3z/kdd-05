@@ -43,3 +43,6 @@ class BaseModelApp:
 
     def criterion(self, pred_y, batch_y):
         return self.loss(pred_y, batch_y)
+
+    def load_pretrained_params(self):
+        pass

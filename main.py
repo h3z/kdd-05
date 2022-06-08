@@ -52,7 +52,7 @@ def turbine_i(args) -> BaseModelApp:
         test_df, processor, train_ds, val_ds, test_ds = utils.load_cache("cache.pkl")
 
     model_app = models.get(len(train_ds))
-
+    model_app.load_pretrained_params()
     # train
     callbacks = [early_stopping.EarlyStopping(), wandb_callback.WandbCallback()]
 

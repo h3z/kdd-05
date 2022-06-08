@@ -119,3 +119,11 @@ class ModelApp(BaseModelApp):
     def eval(self):
         self.encoder.eval()
         self.decoder.eval()
+
+    def load_pretrained_params(self):
+        if "pretrained" in global_config.__dict__:
+            self.load_checkpoint(
+                torch.load(global_config.pretrained, map_location="cuda")
+            )
+            for param in self.encoder.parameters():
+                param.requires_grad = False
