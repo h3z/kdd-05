@@ -121,7 +121,8 @@ class ModelApp(BaseModelApp):
         self.decoder.eval()
 
     def load_pretrained_params(self):
-        if "pretrained" in global_config.__dict__:
+        if global_config.pretrained:
+            print("load pretrained model")
             self.load_checkpoint(
                 torch.load(global_config.pretrained, map_location="cuda")
             )

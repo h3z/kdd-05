@@ -9,10 +9,13 @@ __WANDB_ONLINE__ = "online"
 __WANDB_OFFLINE__ = "offline"
 __WANDB_CLOSE__ = "close"
 
+
+# 因为忘了关这个，被自己坑了好几次。 好不容易训练完了，发现跑的不是指定的exp_file，而是这个
 IS_DEBUG = False
 # IS_DEBUG = True
 DEBUG_CONFIG = {
-    "exp_file": "experiments/attn-seq2seq-14day.json.tmp",
+    "exp_file": "experiments/attn-seq2seq-7day-teacher0-pretrained.json",
+    # "checkpoints": "checkpoints/checkpoints_allturbines",
     "wandb": "close",
 }
 
@@ -53,6 +56,7 @@ class Config:
         if args.exp_file:
             self.conf = json.load(open(args.exp_file))
         self.wandb_conf["mode"] = args.wandb
+        self.checkpoints_dir = args.checkpoints
 
     @property
     def wandb_enable(self):
@@ -74,7 +78,7 @@ class Config:
         if self.wandb_enable:
             return wandb.config[name]
         else:
-            return self.conf[name]
+            return self.conf[name] if name in self.conf else None
 
     def __getitem__(self, key):
         return self.__getattr__(key)
