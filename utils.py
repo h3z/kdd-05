@@ -57,7 +57,7 @@ def prep_env():
         help=f"{__NO_CACHE__}: no cache, {__USE_CACHE__}: use cache, {__SAVE_CACHE__}: save cache",
     )
     parser.add_argument(
-        "--wandb", type=str, default="offline", help="online, offline, close"
+        "--wandb", type=str, default="close", help="online, offline, close"
     )
     namespace, extra = parser.parse_known_args()
 
