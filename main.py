@@ -111,6 +111,15 @@ def turbine_i(args) -> BaseModelApp:
     return model_app, rmse, mae, score
 
 
+def save_model(model):
+    turbine = f"turbine_{global_config.turbine if global_config.turbine else 'all' }_"
+    cuda = f"cuda_{global_config.cuda_rank}_" if global_config.distributed else ""
+    torch.save(
+        model.checkpoint(),
+        f"{global_config.checkpoints_dir}/earlystopping_{turbine}{cuda}.pt",
+    )
+
+
 def main():
     print(datetime.datetime.now())
     args = utils.prep_env()
@@ -125,8 +134,7 @@ def main():
         model, rmse, mae, score = turbine_i(args)
         scores[i - args.capacity_from - 1] = [rmse, mae, score]
 
-        f_name = f"{global_config.checkpoints_dir}/{i}_{global_config.cuda_rank}.pt"
-        torch.save(model.checkpoint(), f_name)
+        save_model(model)
 
     ########
     print(f"rmse: \n{scores[:, 0]} \nmae: \n{scores[:, 1]} \nscore: \n{scores[:, 2]}")
