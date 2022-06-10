@@ -50,6 +50,7 @@ def prep_env():
     parser.add_argument(
         "--checkpoints", type=str, default=f"checkpoints/checkpoints_{timestamp}"
     )
+    parser.add_argument("--train", type=int, default=1)
     parser.add_argument(
         "--cache",
         type=str,
@@ -68,7 +69,6 @@ def prep_env():
     print("Checkpoints:", namespace.checkpoints)
 
     global_config.init(namespace)
-
 
     return namespace
 

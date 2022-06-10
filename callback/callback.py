@@ -12,7 +12,7 @@ class Callback:
     def on_train_batch_end(self, preds: np.ndarray, gts: np.ndarray, loss):
         pass
 
-    def on_epoch_end(self, loss, val_loss, model: torch.nn.Module) -> bool:
+    def on_epoch_end(self, epoch, loss, val_loss, model: torch.nn.Module) -> bool:
         pass
 
     def on_train_finish(self, model: torch.nn.Module):

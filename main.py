@@ -52,40 +52,53 @@ def turbine_i(args) -> BaseModelApp:
         test_df, processor, train_ds, val_ds, test_ds = utils.load_cache("cache.pkl")
 
     model_app = models.get(len(train_ds))
-    model_app.load_pretrained_params()
-    # train
-    callbacks = [
-        cache_checkpoints.CacheCheckpoints(),
-        early_stopping.EarlyStopping(),
-        wandb_callback.WandbCallback(),
-    ]
+    if args.train:
+        model_app.load_pretrained_params()
+        # train
+        callbacks = [
+            cache_checkpoints.CacheCheckpoints(),
+            early_stopping.EarlyStopping(),
+            wandb_callback.WandbCallback(),
+        ]
 
-    # train_pred_records = []
-    # val_pred_records = []
-    for epoch in range(global_config["~epochs"]):
-        train_losses, train_gts, train_preds = train.epoch_train(
-            model_app,
-            train_ds,
-            callbacks,
-        )
-        val_losses, val_gts, val_preds = train.epoch_val(
-            model_app,
-            val_ds,
-            callbacks,
-        )
+        # train_pred_records = []
+        # val_pred_records = []
+        for epoch in range(global_config["~epochs"]):
+            train_losses, train_gts, train_preds = train.epoch_train(
+                model_app,
+                train_ds,
+                callbacks,
+            )
+            val_losses, val_gts, val_preds = train.epoch_val(
+                model_app,
+                val_ds,
+                callbacks,
+            )
 
-        train_loss = torch.stack(train_losses).mean().item()
-        val_loss = torch.stack(val_losses).mean().item()
-        print(epoch, ": train_loss", train_loss, "val_loss", val_loss)
+            train_loss = torch.stack(train_losses).mean().item()
+            val_loss = torch.stack(val_losses).mean().item()
+            print(epoch, ": train_loss", train_loss, "val_loss", val_loss)
 
-        # train_pred_records.append((train_gts, train_preds))
-        # val_pred_records.append((val_gts, val_preds))
+            # train_pred_records.append((train_gts, train_preds))
+            # val_pred_records.append((val_gts, val_preds))
 
-        res = [c.on_epoch_end(train_loss, val_loss, model_app) for c in callbacks]
-        if False in res:
-            break
+            res = [
+                c.on_epoch_end(epoch, train_loss, val_loss, model_app)
+                for c in callbacks
+            ]
+            if False in res:
+                break
 
-    [c.on_train_finish(model_app) for c in callbacks]
+        [c.on_train_finish(model_app) for c in callbacks]
+    else:
+        # name = global_config.model_file_name(prefix="earlystopping_"),
+        # name = f"{global_config.checkpoints_dir}/{global_config.turbine}.pt"
+        # name = f"{global_config.checkpoints_dir}/{global_config.turbine}_0_last.pt"
+
+        name = f"{global_config.checkpoints_dir}/earlystopping_allturbine.pt"
+
+        print(f"load model: {name}")
+        model_app.load_checkpoint(torch.load(name, map_location="cuda"))
 
     # predict
     test_preds, _ = train.predict(model_app, test_ds)
@@ -111,15 +124,6 @@ def turbine_i(args) -> BaseModelApp:
     return model_app, rmse, mae, score
 
 
-def save_model(model):
-    turbine = f"turbine_{global_config.turbine if global_config.turbine else 'all' }_"
-    cuda = f"cuda_{global_config.cuda_rank}_" if global_config.distributed else ""
-    torch.save(
-        model.checkpoint(),
-        f"{global_config.checkpoints_dir}/earlystopping_{turbine}{cuda}.pt",
-    )
-
-
 def main():
     print(datetime.datetime.now())
     args = utils.prep_env()
@@ -133,8 +137,6 @@ def main():
 
         model, rmse, mae, score = turbine_i(args)
         scores[i - args.capacity_from - 1] = [rmse, mae, score]
-
-        save_model(model)
 
     ########
     print(f"rmse: \n{scores[:, 0]} \nmae: \n{scores[:, 1]} \nscore: \n{scores[:, 2]}")

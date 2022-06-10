@@ -76,6 +76,11 @@ class Config:
             return torch.distributed.get_rank()
         return 0
 
+    def model_file_name(self, prefix=None, suffix=None):
+        turbine = f"turbine_{self.turbine if self.turbine else 'all' }_"
+        cuda = f"cuda_{self.cuda_rank}_" if self.distributed else ""
+        return f"{self.checkpoints_dir}/{prefix}{turbine}{cuda}{suffix}.pt"
+
     def init_wandb(self):
         if self.wandb_enable:
             wandb.init(config=self.conf, **self.wandb_conf)

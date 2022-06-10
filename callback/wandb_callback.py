@@ -30,7 +30,7 @@ class WandbCallback(Callback):
         self.max_gt = gts.max()
         self.train_batch_losses.append(loss)
 
-    def on_epoch_end(self, loss, val_loss, model_app: BaseModelApp) -> bool:
+    def on_epoch_end(self, epoch, loss, val_loss, model_app: BaseModelApp) -> bool:
         if val_loss < self.min_loss[1]:
             self.min_loss = [loss, val_loss]
 
