@@ -39,7 +39,7 @@ class Sampler(torch.utils.data.Sampler):
         self.is_train = is_train
 
         if global_config.distributed:
-            self.rank = torch.distributed.get_rank()
+            self.rank = global_config.cuda_rank
             self.num_replicas = torch.distributed.get_world_size()
         else:
             self.rank = 0

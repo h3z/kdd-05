@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 import utils
-from callback import early_stopping, wandb_callback
+from callback import cache_checkpoints, early_stopping, wandb_callback
 from config.config import global_config
 from data import data_loader, data_process, data_reader, data_split
 from model import models
@@ -54,7 +54,11 @@ def turbine_i(args) -> BaseModelApp:
     model_app = models.get(len(train_ds))
     model_app.load_pretrained_params()
     # train
-    callbacks = [early_stopping.EarlyStopping(), wandb_callback.WandbCallback()]
+    callbacks = [
+        cache_checkpoints.CacheCheckpoints(),
+        early_stopping.EarlyStopping(),
+        wandb_callback.WandbCallback(),
+    ]
 
     # train_pred_records = []
     # val_pred_records = []
@@ -114,16 +118,14 @@ def main():
     scores = np.zeros((args.capacity_to - args.capacity_from, 3))
     for i in range(args.capacity_from + 1, args.capacity_to + 1):
         print(">>>>>>>>>>>>>> turbine", i, "<<<<<<<<<<<<<<<<<<")
-        if global_config.data_version != "all_turbines":
-            global_config.turbine = i
+        global_config.turbine = (
+            i if global_config.data_version != "all_turbines" else None
+        )
+
         model, rmse, mae, score = turbine_i(args)
         scores[i - args.capacity_from - 1] = [rmse, mae, score]
 
-        f_name = (
-            f"{global_config.checkpoints_dir}/{i}_{torch.distributed.get_rank()}.pt"
-            if global_config.distributed
-            else f"{global_config.checkpoints_dir}/{i}.pt"
-        )
+        f_name = f"{global_config.checkpoints_dir}/{i}_{global_config.cuda_rank}.pt"
         torch.save(model.checkpoint(), f_name)
 
     ########

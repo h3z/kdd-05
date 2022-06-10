@@ -3,6 +3,7 @@ import json
 PROJECT_NAME = "kdd-05"
 ONLINE = False
 RANDOM_STATE = 42
+import torch
 import wandb
 
 __WANDB_ONLINE__ = "online"
@@ -11,10 +12,10 @@ __WANDB_CLOSE__ = "close"
 
 
 # 因为忘了关这个，被自己坑了好几次。 好不容易训练完了，发现跑的不是指定的exp_file，而是这个
+# IS_DEBUG = False
 IS_DEBUG = False
-# IS_DEBUG = True
 DEBUG_CONFIG = {
-    "exp_file": "experiments/attn-seq2seq-7day-teacher0-pretrained.json",
+    "exp_file": "experiments/2.json",
     # "checkpoints": "checkpoints/checkpoints_allturbines",
     "wandb": "close",
 }
@@ -25,7 +26,7 @@ class Config:
         self.conf = {
             "~lr": 1e-4,
             "~batch_size": 128,
-            "~epochs": 20,
+            "~epochs": 10,
             "~early_stopping_patience": 5,
             "~optimizer": "adam",
             "~loss": "mse",
@@ -33,7 +34,7 @@ class Config:
             "warmup": 0.1,
             "teacher_forcing_ratio": 0.5,
             # data
-            "data_version": "all_turbines",  # small, full, all_turbines
+            "data_version": "full",  # small, full, all_turbines
             "scaler": "all_col",  # each_col, all_col
             "truncate": 0.98,
             "input_size": 10,
@@ -58,9 +59,22 @@ class Config:
         self.wandb_conf["mode"] = args.wandb
         self.checkpoints_dir = args.checkpoints
 
+        try:
+            torch.distributed.init_process_group(backend="nccl")
+            torch.cuda.set_device(torch.distributed.get_rank())
+            self.distributed = True
+        except:
+            self.distributed = False
+
     @property
     def wandb_enable(self):
         return self.wandb_conf["mode"] != __WANDB_CLOSE__
+
+    @property
+    def cuda_rank(self):
+        if self.distributed:
+            return torch.distributed.get_rank()
+        return 0
 
     def init_wandb(self):
         if self.wandb_enable:

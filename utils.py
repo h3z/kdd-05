@@ -68,12 +68,7 @@ def prep_env():
     print("Checkpoints:", namespace.checkpoints)
 
     global_config.init(namespace)
-    try:
-        torch.distributed.init_process_group(backend="nccl")
-        torch.cuda.set_device(torch.distributed.get_rank())
-        global_config.distributed = True
-    except:
-        global_config.distributed = False
+
 
     return namespace
 
