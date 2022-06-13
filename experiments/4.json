@@ -17,6 +17,5 @@
     "model": "attn_seq2seq",
     "hidden_size": 48,
     "num_layer": 1,
-    "turbine": 1,
-    "pretrained": "checkpoints/checkpoints_allturbines_pretrained/1-fix-fix.pt"
+    "pretrained": "checkpoints/2/earlystopping_allturbine.pt"
 }

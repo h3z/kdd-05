@@ -1,4 +1,5 @@
 import datetime
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -91,11 +92,14 @@ def turbine_i(args) -> BaseModelApp:
 
         [c.on_train_finish(model_app) for c in callbacks]
     else:
-        # name = global_config.model_file_name(prefix="earlystopping_"),
-        # name = f"{global_config.checkpoints_dir}/{global_config.turbine}.pt"
-        # name = f"{global_config.checkpoints_dir}/{global_config.turbine}_0_last.pt"
-
-        name = f"{global_config.checkpoints_dir}/earlystopping_allturbine.pt"
+        name = str(
+            next(
+                Path(global_config.checkpoints_dir).glob(
+                    #f"best__turbine_{global_config.turbine}___epoch_*.pt"
+                     f"second_best__turbine_{global_config.turbine}___epoch_*.pt"
+                )
+            )
+        )
 
         print(f"load model: {name}")
         model_app.load_checkpoint(torch.load(name, map_location="cuda"))

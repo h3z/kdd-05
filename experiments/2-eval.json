@@ -8,14 +8,13 @@
     "scheduler": "linear",
     "warmup": 0.1,
     "teacher_forcing_ratio": 0,
-    "data_version": "all_turbines",
-    "scaler": "all_col",
+    "data_version": "full",
+    "scaler": "all_turbines_all_col",
     "truncate": 0.98,
     "input_size": 10,
     "input_timesteps": 1008,
     "output_timesteps": 288,
     "model": "attn_seq2seq",
     "hidden_size": 48,
-    "num_layer": 1,
-    "turbine": 1
+    "num_layer": 1
 }

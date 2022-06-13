@@ -18,5 +18,5 @@
     "hidden_size": 48,
     "num_layer": 1,
     "turbine": 1,
-    "pretrained": "checkpoints/checkpoints_allturbines_pretrained/1-fix.pt"
+    "pretrained": "checkpoints/2/allturbine.pt"
 }

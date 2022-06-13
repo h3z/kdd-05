@@ -49,12 +49,14 @@ class EarlyStopping(Callback):
         model.load_checkpoint(self.best_state_dict)
         torch.save(
             self.best_state_dict,
-            global_config.model_file_name(prefix="best_", suffix=f"_{self.best_epoch}"),
+            global_config.model_file_name(
+                prefix="best_", suffix=f"_epoch_{self.best_epoch}"
+            ),
         )
 
         torch.save(
             self.second_best_state_dict,
             global_config.model_file_name(
-                prefix="second_best_", suffix=f"_{self.second_best_epoch}"
+                prefix="second_best_", suffix=f"_epoch_{self.second_best_epoch}"
             ),
         )
