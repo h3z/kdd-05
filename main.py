@@ -16,10 +16,14 @@ from utils import __NO_CACHE__, __SAVE_CACHE__, __USE_CACHE__, evaluate
 utils.fix_random()
 
 
-def turbine_i(args) -> BaseModelApp:
+def turbine_i(args, turbine_id) -> BaseModelApp:
 
     global_config.init_wandb()
     print(global_config)
+
+    global_config.turbine = (
+        turbine_id if global_config.data_version != "all_turbines" else None
+    )
 
     if args.cache == __NO_CACHE__ or args.cache == __SAVE_CACHE__:
         # read csv
@@ -95,8 +99,9 @@ def turbine_i(args) -> BaseModelApp:
         name = str(
             next(
                 Path(global_config.checkpoints_dir).glob(
-                    #f"best__turbine_{global_config.turbine}___epoch_*.pt"
-                     f"second_best__turbine_{global_config.turbine}___epoch_*.pt"
+                    # f"best__turbine_{global_config.turbine}___epoch_*.pt"
+                    # f"second_best__turbine_{global_config.turbine}___epoch_*.pt"
+                    "second_best__turbine_all_cuda_1__epoch_*.pt.fix"
                 )
             )
         )
@@ -106,9 +111,9 @@ def turbine_i(args) -> BaseModelApp:
 
     # predict
     test_preds, _ = train.predict(model_app, test_ds)
-
+    print(f"{callbacks[2].max_gt.item():.2f}, {test_preds.max():.2f}")
     # post process
-    test_preds = processor.postprocess(test_preds)[..., -1:]
+    test_preds = processor.postprocess(test_preds).squeeze()
     # test_gts = processor.postprocess(test_gts)[..., -1:]
     test_gts = np.concatenate(
         [
@@ -135,11 +140,7 @@ def main():
     scores = np.zeros((args.capacity_to - args.capacity_from, 3))
     for i in range(args.capacity_from + 1, args.capacity_to + 1):
         print(">>>>>>>>>>>>>> turbine", i, "<<<<<<<<<<<<<<<<<<")
-        global_config.turbine = (
-            i if global_config.data_version != "all_turbines" else None
-        )
-
-        model, rmse, mae, score = turbine_i(args)
+        model, rmse, mae, score = turbine_i(args, i)
         scores[i - args.capacity_from - 1] = [rmse, mae, score]
 
     ########
