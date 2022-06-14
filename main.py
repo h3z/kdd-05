@@ -99,9 +99,14 @@ def turbine_i(args, turbine_id) -> BaseModelApp:
         name = str(
             next(
                 Path(global_config.checkpoints_dir).glob(
+                    # "second_best__turbine_all_cuda_1__epoch_*.pt.fix"
+                    # -------- exp/attn-seq2seq/1/ second_best_turbine_37__10.pt --------
+                    # f"second_best_turbine_{global_config.turbine}__*.pt"
+                    # -------- exp/attn-seq2seq/2/ second_best_turbine_all_cuda_0__4.pt.fix --------
+                    # f"second_best_turbine_all_cuda_0__4.pt.fix"
+                    # -------- exp/attn-seq2seq/3/ second_best__turbine_9___epoch_3.pt --------
                     # f"best__turbine_{global_config.turbine}___epoch_*.pt"
-                    # f"second_best__turbine_{global_config.turbine}___epoch_*.pt"
-                    "second_best__turbine_all_cuda_1__epoch_*.pt.fix"
+                    f"second_best__turbine_{global_config.turbine}___epoch_*.pt"
                 )
             )
         )
@@ -111,7 +116,8 @@ def turbine_i(args, turbine_id) -> BaseModelApp:
 
     # predict
     test_preds, _ = train.predict(model_app, test_ds)
-    print(f"{callbacks[2].max_gt.item():.2f}, {test_preds.max():.2f}")
+    # print(f"{callbacks[2].max_gt.item():.2f}, {test_preds.max():.2f}")
+
     # post process
     test_preds = processor.postprocess(test_preds).squeeze()
     # test_gts = processor.postprocess(test_gts)[..., -1:]

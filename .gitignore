@@ -1,3 +1,4 @@
+experiments
 *.score
 *.out
 wandb
