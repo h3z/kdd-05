@@ -68,7 +68,7 @@ def prep_env():
     Path(namespace.checkpoints).mkdir(exist_ok=True, parents=True)
     print("Checkpoints:", namespace.checkpoints)
 
-    global_config.init(namespace)
+    global_config.init(namespace, extra)
 
     return namespace
 
@@ -108,7 +108,7 @@ def evaluate(predictions, grounds, raw_data_lst):
     day_len = settings["day_len"]
     day_acc = []
     for idx in range(0, preds.shape[0]):
-        acc = 1 - rmse(preds[idx, -day_len:, -1], gts[idx, -day_len:, -1]) / (
+        acc = 1 - rmse(preds[idx, -day_len:], gts[idx, -day_len:]) / (
             settings["capacity"] * 1000
         )
         if acc != acc:
@@ -300,7 +300,7 @@ def turbine_scores(pred, gt, raw_data, examine_len, stride=1):
         | (raw_data["Ndir"] > 720)
     )
     maes, rmses = [], []
-    cnt_sample, out_seq_len, _ = pred.shape
+    cnt_sample, out_seq_len = pred.shape
     for i in range(0, cnt_sample, stride):
         indices = np.where(~cond[i : out_seq_len + i])
         prediction = pred[i]
