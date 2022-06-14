@@ -17,8 +17,8 @@ def epoch_train(model_app: BaseModelApp, train_loader, callbacks: List[Callback]
     for i, (batch_x, batch_y) in (
         pbar := tqdm(enumerate(train_loader), total=len(train_loader), unit=" batch")
     ):
-        batch_x = batch_x.to(torch.float32).cuda()
-        batch_y = batch_y.to(torch.float32).cuda()
+        # batch_x = batch_x.to(torch.float32).cuda()
+        # batch_y = batch_y.to(torch.float32).cuda()
 
         model_app.zero_grad()
         pred_y = model_app.forward(batch_x, batch_y, is_training=True)
@@ -50,8 +50,8 @@ def epoch_val(model_app: BaseModelApp, val_loader, callbacks: List[Callback] = [
         for i, (batch_x, batch_y) in tqdm(
             enumerate(val_loader), total=len(val_loader), unit=" batch"
         ):
-            batch_x = batch_x.to(torch.float32).cuda()
-            batch_y = batch_y.to(torch.float32).cuda()
+            # batch_x = batch_x.to(torch.float32).cuda()
+            # batch_y = batch_y.to(torch.float32).cuda()
             pred_y = model_app.forward(batch_x, batch_y)
             loss = model_app.criterion(pred_y, batch_y)
             validation_losses.append(loss)
@@ -75,8 +75,8 @@ def predict(model_app: BaseModelApp, test_loader):
         for i, (batch_x, batch_y) in tqdm(
             enumerate(test_loader), total=len(test_loader), unit=" batch"
         ):
-            batch_x = batch_x.to(torch.float32).cuda()
-            batch_y = batch_y.to(torch.float32).cuda()
+            # batch_x = batch_x.to(torch.float32).cuda()
+            # batch_y = batch_y.to(torch.float32).cuda()
             pred_y = model_app.forward(batch_x, batch_y)
 
             preds.append(pred_y.cpu().detach().numpy())

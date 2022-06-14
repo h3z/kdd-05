@@ -6,6 +6,7 @@ import pandas as pd
 import torch
 
 from config.config import global_config
+from data.transformer import transformer_data_loader
 from utils import feature_cols
 
 
@@ -49,6 +50,8 @@ class Sampler(torch.utils.data.Sampler):
             global_config.input_timesteps + global_config.output_timesteps
         )
         self.total_len = len(data) - self.total_timesteps + 1
+        # self.total_len //= 10
+
         self.len = self.total_len // self.num_replicas
 
     def __iter__(self) -> List[int]:
@@ -99,8 +102,10 @@ class DataLoader:
         self.data = torch.tensor(self.data).to(torch.float32).cuda()
 
     def get(self) -> torch.utils.data.DataLoader:
-        dataset = Dataset(self.data)
-
+        if global_config.model == "transformer":
+            dataset = transformer_data_loader.Dataset(self.data, self.is_train)
+        else:
+            dataset = Dataset(self.data)
         if global_config.data_version == "all_turbines":
             sampler = AllTurbinesSampler(self.data, is_train=self.is_train)
         else:

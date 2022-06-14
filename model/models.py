@@ -1,5 +1,6 @@
 from config.config import global_config
 from model import attn_seq2seq, base_model, gru, seq2seq
+from model.transformer import time_series_transformer
 
 
 def get(batch_count=None) -> base_model.BaseModelApp:
@@ -17,6 +18,10 @@ def get(batch_count=None) -> base_model.BaseModelApp:
         modelapp = attn_seq2seq.ModelApp(
             attn_seq2seq.EncoderRNN().cuda(),
             attn_seq2seq.AttnDecoderRNN().cuda(),
+        )
+    elif global_config.model == "transformer":
+        modelapp = time_series_transformer.ModelApp(
+            time_series_transformer.get_model().cuda()
         )
 
     if batch_count is not None:
