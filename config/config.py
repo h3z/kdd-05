@@ -4,6 +4,7 @@ PROJECT_NAME = "kdd-05"
 ONLINE = False
 RANDOM_STATE = 42
 import torch
+
 import wandb
 
 __WANDB_ONLINE__ = "online"
@@ -15,7 +16,7 @@ __WANDB_CLOSE__ = "close"
 # IS_DEBUG = False
 IS_DEBUG = False
 DEBUG_CONFIG = {
-    "exp_file": "experiments/2.json",
+    "exp_file": "experiments/transformer-t1.json",
     # "checkpoints": "checkpoints/checkpoints_allturbines",
     "wandb": "close",
 }
@@ -23,39 +24,65 @@ DEBUG_CONFIG = {
 
 class Config:
     def __init__(self) -> None:
+        # self.conf = {
+        #     "~lr": 1e-4,
+        #     "~batch_size": 128,
+        #     "~epochs": 1,
+        #     "~early_stopping_patience": 5,
+        #     "~optimizer": "adam",
+        #     "~loss": "mse",
+        #     "scheduler": "linear",  # linear, cosine
+        #     "warmup": 0.1,
+        #     "teacher_forcing_ratio": 0.5,
+        #     # data
+        #     "data_version": "full",  # small, full, all_turbines
+        #     "scaler": "all_col",  # each_col, all_col
+        #     "truncate": 0.98,
+        #     "input_size": 10,
+        #     "input_timesteps": 144,
+        #     "output_timesteps": 144 * 2,
+        #     # model
+        #     "model": "transformer",  # gru, seq2seq, attn_seq2seq, transformer
+        #     "hidden_size": 48,
+        #     "num_layer": 1,
+        #     "n_heads": 8,
+        #     "dim_val": 64,
+        # }
         self.conf = {
-            "~lr": 1e-4,
+            "~lr": 0.0001,
             "~batch_size": 128,
             "~epochs": 10,
             "~early_stopping_patience": 5,
             "~optimizer": "adam",
             "~loss": "mse",
-            "scheduler": "linear",  # linear, cosine
+            "scheduler": "linear",
             "warmup": 0.1,
-            "teacher_forcing_ratio": 0.5,
-            # data
-            "data_version": "full",  # small, full, all_turbines
-            "scaler": "all_col",  # each_col, all_col
+            "data_version": "full",
+            "scaler": "all_col",
             "truncate": 0.98,
             "input_size": 10,
             "input_timesteps": 144,
-            "output_timesteps": 144 * 2,
-            # model
-            "model": "gru",  # gru, seq2seq, attn_seq2seq
-            "hidden_size": 48,
-            "num_layer": 1,
+            "output_timesteps": 288,
+            "model": "transformer",
+            "n_heads": 8,
+            "dim_val": 128,
         }
+
         self.wandb_conf = {
             "project": PROJECT_NAME,
             "entity": "hzzz",
             # mkdir /wandb/PROJECT_NAME
             "dir": f"/wandb/{PROJECT_NAME}",
-            "mode": "online" if ONLINE else "offline",
+            "mode": __WANDB_CLOSE__,
         }
 
-    def init(self, args):
+    def init(self, args, extra):
         if args.exp_file:
             self.conf = json.load(open(args.exp_file))
+            for i in range(len(extra)):
+                k, v = extra[i].split("=")
+                k = k.replace("--", "")
+                self.conf[k] = type(self.conf[k])(v)
         self.wandb_conf["mode"] = args.wandb
         self.checkpoints_dir = args.checkpoints
 
@@ -103,7 +130,10 @@ class Config:
         return self.__getattr__(key)
 
     def __str__(self) -> str:
-        return str(self.conf)
+        if self.wandb_enable:
+            return str(wandb.config)
+        else:
+            return str(self.conf)
 
 
 global_config = Config()
