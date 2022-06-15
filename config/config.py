@@ -16,9 +16,10 @@ __WANDB_CLOSE__ = "close"
 # IS_DEBUG = False
 IS_DEBUG = False
 DEBUG_CONFIG = {
-    "exp_file": "experiments/transformer-t1.json",
-    # "checkpoints": "checkpoints/checkpoints_allturbines",
+    "exp_file": "exp/transformer/2/config-eval.json",
+    "checkpoints": "exp/transformer/2/checkpoints",
     "wandb": "close",
+    "train": 0,
 }
 
 
@@ -30,12 +31,13 @@ class Config:
         #     "~epochs": 1,
         #     "~early_stopping_patience": 5,
         #     "~optimizer": "adam",
-        #     "~loss": "mse",
+        #     "~loss": "mse", # mse, custom1
         #     "scheduler": "linear",  # linear, cosine
         #     "warmup": 0.1,
         #     "teacher_forcing_ratio": 0.5,
         #     # data
-        #     "data_version": "full",  # small, full, all_turbines
+        #     "data_version": "full",  # small, full, all_turbines, col_turbines
+        #     "col_turbine": 0, # 0, 1, 2, 3, 4, 5
         #     "scaler": "all_col",  # each_col, all_col
         #     "truncate": 0.98,
         #     "input_size": 10,
@@ -57,7 +59,8 @@ class Config:
             "~loss": "mse",
             "scheduler": "linear",
             "warmup": 0.1,
-            "data_version": "full",
+            "data_version": "all_turbines",
+            "col_turbine": 0,  # 0, 1, 2, 3, 4, 5.    -1: all
             "scaler": "all_col",
             "truncate": 0.98,
             "input_size": 10,
@@ -104,7 +107,14 @@ class Config:
         return 0
 
     def model_file_name(self, prefix="", suffix=""):
-        turbine = f"turbine_{self.turbine if self.turbine else 'all' }"
+        turbine = "turbine_"
+        if self.turbine:
+            turbine += self.turbine
+        elif self.col_turbine >= 0:
+            turbine = turbine + "col_" + str(self.col_turbine)
+        else:
+            turbine += "all"
+
         cuda = f"cuda_{self.cuda_rank}" if self.distributed else ""
         return f"{self.checkpoints_dir}/{prefix}_{turbine}_{cuda}_{suffix}.pt"
 
@@ -122,7 +132,7 @@ class Config:
 
     def __getattr__(self, name: str):
         if self.wandb_enable:
-            return wandb.config[name]
+            return wandb.config[name] if name in wandb.config else None
         else:
             return self.conf[name] if name in self.conf else None
 
