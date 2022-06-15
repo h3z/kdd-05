@@ -1,0 +1,19 @@
+{
+    "~lr": 0.001,
+    "~batch_size": 64,
+    "~epochs": 10,
+    "~early_stopping_patience": 5,
+    "~optimizer": "adam",
+    "~loss": "mse",
+    "scheduler": "linear",
+    "warmup": 0.1,
+    "data_version": "full",
+    "scaler": "all_turbines_all_col",
+    "truncate": 0.98,
+    "input_size": 10,
+    "input_timesteps": 288,
+    "output_timesteps": 288,
+    "model": "transformer",
+    "n_heads": 4,
+    "dim_val": 64
+}

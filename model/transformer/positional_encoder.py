@@ -56,7 +56,10 @@ class PositionalEncoder(nn.Module):
         )  # torch.Size([target_seq_len, input_size, dim_val])
 
         # register that pe is not a model parameter
-        self.register_buffer("pe", pe)
+        # self.register_buffer("pe", pe)
+        # FIXME: workaround for DDP issue: https://github.com/pytorch/pytorch/issues/68407
+        self.register_parameter("pe", nn.Parameter(pe, requires_grad=False))
+        # self.pe = torch.nn.Parameter(pe, requires_grad=False)
 
     def forward(self, x: Tensor) -> Tensor:
         """
