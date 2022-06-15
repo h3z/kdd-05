@@ -27,7 +27,9 @@ def turbine_i(args, turbine_id) -> BaseModelApp:
 
     if args.cache == __NO_CACHE__ or args.cache == __SAVE_CACHE__:
         # read csv
-        df = data_reader.DataReader(global_config.turbine).train
+        dr = data_reader.DataReader(global_config.turbine)
+        df = dr.train
+        location = dr.location
 
         # split
         train_df, val_df, test_df = data_split.split(df)
@@ -43,9 +45,9 @@ def turbine_i(args, turbine_id) -> BaseModelApp:
         test_df = processor.preprocess(test_df)
 
         # torch DataLoader
-        train_ds = data_loader.DataLoader(train_df, is_train=True).get()
-        val_ds = data_loader.DataLoader(val_df).get()
-        test_ds = data_loader.DataLoader(test_df).get()
+        train_ds = data_loader.DataLoader(train_df, location, is_train=True).get()
+        val_ds = data_loader.DataLoader(val_df, location).get()
+        test_ds = data_loader.DataLoader(test_df, location).get()
 
         if args.cache == __SAVE_CACHE__:
             # 会覆盖
@@ -96,17 +98,23 @@ def turbine_i(args, turbine_id) -> BaseModelApp:
 
         [c.on_train_finish(model_app) for c in callbacks]
     else:
+        turbine_id = global_config.turbine
         name = str(
             next(
                 Path(global_config.checkpoints_dir).glob(
                     # "second_best__turbine_all_cuda_1__epoch_*.pt.fix"
                     # -------- exp/attn-seq2seq/1/ second_best_turbine_37__10.pt --------
-                    # f"second_best_turbine_{global_config.turbine}__*.pt"
+                    # f"second_best_turbine_{turbine_id}__*.pt"
                     # -------- exp/attn-seq2seq/2/ second_best_turbine_all_cuda_0__4.pt.fix --------
                     # f"second_best_turbine_all_cuda_0__4.pt.fix"
                     # -------- exp/attn-seq2seq/3/ second_best__turbine_9___epoch_3.pt --------
-                    # f"best__turbine_{global_config.turbine}___epoch_*.pt"
-                    f"second_best__turbine_{global_config.turbine}___epoch_*.pt"
+                    # f"best__turbine_{turbine_id}___epoch_*.pt"
+                    # f"second_best__turbine_{turbine_id}___epoch_*.pt"
+                    # -------- exp/transformer/2/ second_best__turbine_all_cuda_0__epoch_7.pt.fix --------
+                    # f"second_best__turbine_all_cuda_0__epoch_*.pt.fix"
+                    # f"second_best__turbine_all_cuda_1__epoch_*.pt.fix"
+                    # -------- exp/transformer/3/ second_best__turbine_col_0___epoch_9.pt --------
+                    f"second_best__turbine_col_{dr.location.query('TurbID == @turbine_id').col.values[0]}___epoch_*.pt"
                 )
             )
         )
@@ -124,7 +132,7 @@ def turbine_i(args, turbine_id) -> BaseModelApp:
     test_gts = np.concatenate(
         [
             batch[1].cpu().detach().numpy()
-            for batch in data_loader.DataLoader(origin_test_df).get()
+            for batch in data_loader.DataLoader(origin_test_df, location).get()
         ]
     )
     test_df = test_df.rename(columns=utils.to_origin_names)
