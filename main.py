@@ -99,25 +99,28 @@ def turbine_i(args, turbine_id) -> BaseModelApp:
         [c.on_train_finish(model_app) for c in callbacks]
     else:
         turbine_id = global_config.turbine
-        name = str(
-            next(
-                Path(global_config.checkpoints_dir).glob(
-                    # "second_best__turbine_all_cuda_1__epoch_*.pt.fix"
-                    # -------- exp/attn-seq2seq/1/ second_best_turbine_37__10.pt --------
-                    # f"second_best_turbine_{turbine_id}__*.pt"
-                    # -------- exp/attn-seq2seq/2/ second_best_turbine_all_cuda_0__4.pt.fix --------
-                    # f"second_best_turbine_all_cuda_0__4.pt.fix"
-                    # -------- exp/attn-seq2seq/3/ second_best__turbine_9___epoch_3.pt --------
-                    # f"best__turbine_{turbine_id}___epoch_*.pt"
-                    # f"second_best__turbine_{turbine_id}___epoch_*.pt"
-                    # -------- exp/transformer/2/ second_best__turbine_all_cuda_0__epoch_7.pt.fix --------
-                    # f"second_best__turbine_all_cuda_0__epoch_*.pt.fix"
-                    # f"second_best__turbine_all_cuda_1__epoch_*.pt.fix"
-                    # -------- exp/transformer/3/ second_best__turbine_col_0___epoch_9.pt --------
-                    f"second_best__turbine_col_{dr.location.query('TurbID == @turbine_id').col.values[0]}___epoch_*.pt"
+        try:
+            name = str(
+                next(
+                    Path(global_config.checkpoints_dir).glob(
+                        # "second_best__turbine_all_cuda_1__epoch_*.pt.fix"
+                        # -------- exp/attn-seq2seq/1/ second_best_turbine_37__10.pt --------
+                        # f"second_best_turbine_{turbine_id}__*.pt"
+                        # -------- exp/attn-seq2seq/2/ second_best_turbine_all_cuda_0__4.pt.fix --------
+                        # f"second_best_turbine_all_cuda_0__4.pt.fix"
+                        # -------- exp/attn-seq2seq/3/ second_best__turbine_9___epoch_3.pt --------
+                        # f"best__turbine_{turbine_id}___epoch_*.pt"
+                        # f"second_best__turbine_{turbine_id}___epoch_*.pt"
+                        # -------- exp/transformer/2/ second_best__turbine_all_cuda_0__epoch_7.pt.fix --------
+                        # f"second_best__turbine_all_cuda_0__epoch_*.pt.fix"
+                        # f"second_best__turbine_all_cuda_1__epoch_*.pt.fix"
+                        # -------- exp/transformer/3/ second_best__turbine_col_0___epoch_9.pt --------
+                        f"second_best__turbine_col_{dr.location.query('TurbID == @turbine_id').col.values[0]}___epoch_*.pt"
+                    )
                 )
             )
-        )
+        except:
+            return -1, -1, -1, -1
 
         print(f"load model: {name}")
         model_app.load_checkpoint(torch.load(name, map_location="cuda"))
