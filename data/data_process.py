@@ -17,6 +17,7 @@ class Scaler:
         elif global_config.scaler == "all_col":
             self.mean = np.mean(data)
             self.std = np.std(data)
+            print("xxx", self.mean, self.std)
         elif global_config.scaler == "constant":
             # 方便打分时，预处理值固定
             self.mean = global_config.__mean__

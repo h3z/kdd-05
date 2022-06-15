@@ -11,17 +11,14 @@ from utils import feature_cols
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, data: np.ndarray):
+    def __init__(self, data: np.ndarray, turbine_count: int):
         self.input_timesteps = global_config.input_timesteps
         self.data = data
 
         input_steps = global_config.input_timesteps
         output_steps = global_config.output_timesteps
         self.total_timesteps = input_steps + output_steps
-        if global_config.data_version == "all_turbines":
-            self.len = len(data) - (self.total_timesteps - 1) * 134
-        else:
-            self.len = len(data) - (self.total_timesteps - 1)
+        self.len = len(data) - (self.total_timesteps - 1) * turbine_count
 
     def __getitem__(self, index):
         mid = index + self.input_timesteps
@@ -35,7 +32,7 @@ class Dataset(torch.utils.data.Dataset):
 
 
 class Sampler(torch.utils.data.Sampler):
-    def __init__(self, data: np.ndarray, is_train: bool) -> None:
+    def __init__(self, data: np.ndarray, turbine_count: int, is_train: bool) -> None:
         super().__init__(data)
         self.is_train = is_train
 
@@ -49,17 +46,20 @@ class Sampler(torch.utils.data.Sampler):
         self.total_timesteps = (
             global_config.input_timesteps + global_config.output_timesteps
         )
-        self.total_len = len(data) - self.total_timesteps + 1
+        self.total_len = len(data) - (self.total_timesteps - 1) * turbine_count
         # self.total_len //= 10
-
         self.len = self.total_len // self.num_replicas
+        self.turbine_count = turbine_count
+        self.data_len = len(data)
 
     def __iter__(self) -> List[int]:
         if self.is_train:
-            lst = torch.randperm(self.total_len).tolist()
+            lst = torch.randperm(self.data_len).tolist()
         else:
-            lst = list(range(self.total_len))
-
+            lst = list(range(self.data_len))
+        each_turbine = self.data_len / self.turbine_count
+        threshold = each_turbine - (self.total_timesteps - 1)
+        lst = [i for i in lst if i % each_turbine < threshold]
         return iter(self.distributed(lst) if self.is_train else lst)
 
     def distributed(self, lst):
@@ -70,29 +70,16 @@ class Sampler(torch.utils.data.Sampler):
         return self.len
 
 
-class AllTurbinesSampler(Sampler):
-    def __init__(self, data: np.ndarray, is_train: bool) -> None:
-        super().__init__(data, is_train)
-
-        total_len = len(data) - (self.total_timesteps - 1) * 134
-        self.len = total_len // self.num_replicas
-        self.data_len = len(data)
-
-    def __iter__(self) -> List[int]:
-        if self.is_train:
-            lst = torch.randperm(self.data_len).tolist()
-        else:
-            lst = list(range(self.data_len))
-        each_turbine = self.data_len / 134
-        threshold = each_turbine - (self.total_timesteps - 1)
-        lst = [i for i in lst if i % each_turbine < threshold]
-        return iter(self.distributed(lst) if self.is_train else lst)
-
-
 class DataLoader:
-    def __init__(self, df: pd.DataFrame, is_train=False) -> None:
+    def __init__(
+        self, df: pd.DataFrame, location: pd.DataFrame, is_train=False
+    ) -> None:
         self.is_train = is_train
-
+        col = global_config.col_turbine
+        if col is not None and col != -1:
+            ids = location.query("col == @col").TurbID.values
+            df = df.query("id in @ids")
+        self.turbine_count = df.id.nunique()
         df = df[feature_cols]
         # smaller size for training
         if global_config.data_version == "small" and is_train:
@@ -105,11 +92,9 @@ class DataLoader:
         if global_config.model == "transformer":
             dataset = transformer_data_loader.Dataset(self.data, self.is_train)
         else:
-            dataset = Dataset(self.data)
-        if global_config.data_version == "all_turbines":
-            sampler = AllTurbinesSampler(self.data, is_train=self.is_train)
-        else:
-            sampler = Sampler(self.data, is_train=self.is_train)
+            dataset = Dataset(self.data, self.turbine_count)
+
+        sampler = Sampler(self.data, self.turbine_count, is_train=self.is_train)
 
         return torch.utils.data.DataLoader(
             dataset=dataset,
