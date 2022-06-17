@@ -93,16 +93,9 @@ class Sampler(torch.utils.data.Sampler):
 
 
 class DataLoader:
-    # 这个 location 是需要优化掉的，不该在这里
-    def __init__(
-        self, df: pd.DataFrame, location: pd.DataFrame, is_train=False
-    ) -> None:
+    def __init__(self, df: pd.DataFrame, is_train=False) -> None:
         self.is_train = is_train
-        # 选择第 N 列
-        col = global_config.col_turbine
-        if col is not None and col != -1:
-            ids = location.query("col == @col").TurbID.values
-            df = df.query("id in @ids")
+
         # 过滤后一共多少台机组，滑窗时候需要从这个机组跳到下个机组要用到
         self.turbine_count = df.id.nunique()
 

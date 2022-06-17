@@ -93,7 +93,7 @@ def compute_score(test_df, origin_test_df, location, test_preds):
     test_gts = np.concatenate(
         [
             batch[1].cpu().detach().numpy()
-            for batch in data_loader.DataLoader(origin_test_df, location).get()
+            for batch in data_loader.DataLoader(origin_test_df).get()
         ]
     )
 
@@ -113,7 +113,7 @@ def compute_score(test_df, origin_test_df, location, test_preds):
 
 
 def prepare_data():
-    dr = data_reader.DataReader(global_config.turbine)
+    dr = data_reader.DataReader(global_config.turbine, global_config.col_turbine)
     df = dr.train
     location = dr.location
 
@@ -145,14 +145,14 @@ def cv_i(ck_dir, i, train_dfs, val_dfs, test_dfs, location, args):
         test_df = processor.preprocess(test_df)
 
         # torch DataLoader
-        train_ds = data_loader.DataLoader(train_df, location, is_train=True).get()
-        val_ds = data_loader.DataLoader(val_df, location).get()
+        train_ds = data_loader.DataLoader(train_df, is_train=True).get()
+        val_ds = data_loader.DataLoader(val_df).get()
 
         model_app = models.get(len(train_ds))
 
         train_val(model_app, train_ds, val_ds)
         # 下边这部分基于自己的 test_df 打分，其实没必要，所以只放在训练时候顺便看一眼，先留着看看吧
-        test_ds = data_loader.DataLoader(test_df, location).get()
+        test_ds = data_loader.DataLoader(test_df).get()
         test_preds, _ = train.predict(model_app, test_ds)
         test_preds = processor.postprocess(test_preds).squeeze()
         rmse, mae, score = compute_score(test_df, origin_test_df, location, test_preds)
@@ -190,7 +190,7 @@ def turbine_i(args, turbine_id) -> BaseModelApp:
     # 现在开始不希望处理数据时依赖训练集了。所以以后 scaler 尽量不要用 all_col，直接用之前计算好的常数把。（有新特征的话再重新计算）
     processor = data_process.DataProcess(train_df)
     test_df = processor.preprocess(test_df)
-    test_ds = data_loader.DataLoader(test_df, location).get()
+    test_ds = data_loader.DataLoader(test_df).get()
 
     global_config.checkpoints_dir = ck_dir
     for m in cv_models:
