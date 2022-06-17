@@ -65,7 +65,26 @@ class DataProcess:
 
         df[utils.feature_cols] = self.scaler.transform(df[utils.feature_cols].values)
         # print("preprocess done, ", df.shape)
+
+        df = self.fe(df)
+        return df
+
+    def fe(self, df):
+        df = self.fe_1_is_vald(df)
         return df
 
     def postprocess(self, preds: np.ndarray) -> np.ndarray:
-        return self.scaler.inverse_transform(preds)
+        t = self.scaler.inverse_transform(preds)
+        t = np.clip(t, a_min=0, a_max=t.max())
+        return t
+
+    def fe_1_is_vald(self, df):
+        df["id_valid"] = df.index.isin(
+            df.query(
+                "(active_power <= 0 and spd > 2.5) \
+                    or (pab1 > 89 or pab2 > 89 or pab3 > 89) \
+                    or (dir < -180 or dir > 180) \
+                    or (nacelle_dir < -720 or nacelle_dir > 720)"
+            ).index
+        )
+        return df

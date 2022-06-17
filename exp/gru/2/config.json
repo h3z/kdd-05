@@ -1,20 +1,20 @@
 {
-    "~lr": 0.001,
-    "~batch_size": 64,
+    "~lr": 0.0005,
+    "~batch_size": 256,
     "~epochs": 20,
-    "~early_stopping_patience": 5,
+    "~early_stopping_patience": 10,
     "~optimizer": "adam",
     "~loss": "custom1",
     "scheduler": "linear",
     "warmup": 0.1,
     "data_version": "full",
     "scaler": "all_turbines_all_col",
-    "col_turbine": 0,
     "truncate": 0.98,
     "input_size": 10,
-    "input_timesteps": 288,
+    "input_timesteps": 1008,
     "output_timesteps": 288,
-    "model": "transformer",
-    "n_heads": 4,
-    "dim_val": 64
+    "model": "gru",
+    "hidden_size": 48,
+    "num_layer": 2,
+    "turbine": 1
 }

@@ -23,12 +23,34 @@ class Dataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         mid = index + self.input_timesteps
         x = self.data[index:mid, :]
+        # 这个 -1 要注意。可能随着特征变化，就不再指向 y 了。
+        # 目前主要是自定义损失时候，想要通过 y 传递一些权重过去
         y = self.data[mid : index + self.total_timesteps, -1:]
 
         return x, y
 
     def __len__(self):
         return self.len
+
+
+class TransformerDataset(Dataset):
+    def __init__(self, data: np.ndarray, turbine_count: int):
+        super().__init__(data, turbine_count)
+
+    def __getitem__(self, index):
+        window = self.data[index : index + self.total_timesteps]
+        src, trg, trg_y = transformer_data_loader.get_src_trg(window)
+
+        trg = trg.clone()
+        trg[1:] = 0
+        # if not self.is_train:
+        #     trg = trg.clone()
+        #     trg[1:] = 0
+        # trg = trg[:, -1]
+
+        trg_y = trg_y[:, -1]
+
+        return (src, trg), trg_y
 
 
 class Sampler(torch.utils.data.Sampler):
@@ -71,26 +93,33 @@ class Sampler(torch.utils.data.Sampler):
 
 
 class DataLoader:
+    # 这个 location 是需要优化掉的，不该在这里
     def __init__(
         self, df: pd.DataFrame, location: pd.DataFrame, is_train=False
     ) -> None:
         self.is_train = is_train
+        # 选择第 N 列
         col = global_config.col_turbine
         if col is not None and col != -1:
             ids = location.query("col == @col").TurbID.values
             df = df.query("id in @ids")
+        # 过滤后一共多少台机组，滑窗时候需要从这个机组跳到下个机组要用到
         self.turbine_count = df.id.nunique()
+
+        # 特征列，如果有自定义特征，需要在这里加，这里硬编码了，暂时不优化，后期应该会整合到配置文件中。
         df = df[feature_cols]
+
         # smaller size for training
         if global_config.data_version == "small" and is_train:
             self.data = df.values[: len(df) // 30]
         else:
             self.data = df.values
+
         self.data = torch.tensor(self.data).to(torch.float32).cuda()
 
     def get(self) -> torch.utils.data.DataLoader:
         if global_config.model == "transformer":
-            dataset = transformer_data_loader.Dataset(self.data, self.is_train)
+            dataset = TransformerDataset(self.data, self.turbine_count)
         else:
             dataset = Dataset(self.data, self.turbine_count)
 

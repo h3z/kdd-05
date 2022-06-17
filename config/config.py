@@ -16,8 +16,8 @@ __WANDB_CLOSE__ = "close"
 # IS_DEBUG = False
 IS_DEBUG = False
 DEBUG_CONFIG = {
-    "exp_file": "exp/transformer/2/config-eval.json",
-    "checkpoints": "exp/transformer/2/checkpoints",
+    "exp_file": "exp/gru/2/config.json",
+    "checkpoints": "exp/gru/2/checkpoints",
     "wandb": "close",
     "train": 0,
 }
@@ -109,7 +109,7 @@ class Config:
     def model_file_name(self, prefix="", suffix=""):
         turbine = "turbine_"
         if self.turbine:
-            turbine += self.turbine
+            turbine += str(self.turbine)
         elif self.col_turbine >= 0:
             turbine = turbine + "col_" + str(self.col_turbine)
         else:

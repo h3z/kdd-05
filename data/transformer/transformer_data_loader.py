@@ -59,36 +59,3 @@ def get_src_trg(
         trg,
         trg_y.squeeze(-1),
     )  # change size from [batch_size, target_seq_len, num_features] to [batch_size, target_seq_len]
-
-
-class Dataset(torch.utils.data.Dataset):
-    def __init__(self, data: np.ndarray, is_train):
-        self.input_timesteps = config.input_timesteps
-        self.data = data
-        self.is_train = is_train
-
-        input_steps = config.input_timesteps
-        output_steps = config.output_timesteps
-        self.total_timesteps = input_steps + output_steps
-        if config.data_version == "all_turbines":
-            self.len = len(data) - (self.total_timesteps - 1) * 134
-        else:
-            self.len = len(data) - (self.total_timesteps - 1)
-
-    def __getitem__(self, index):
-        window = self.data[index : index + self.total_timesteps]
-        src, trg, trg_y = get_src_trg(window)
-
-        trg = trg.clone()
-        trg[1:] = 0
-        # if not self.is_train:
-        #     trg = trg.clone()
-        #     trg[1:] = 0
-        # trg = trg[:, -1]
-
-        trg_y = trg_y[:, -1]
-
-        return (src, trg), trg_y
-
-    def __len__(self):
-        return self.len
