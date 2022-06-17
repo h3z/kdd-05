@@ -129,9 +129,9 @@ def evaluate(predictions, grounds, raw_data_lst):
     overall_rmse *= 134
     total_score = (overall_mae + overall_rmse) / 2
 
-    print(
-        f"RMSE: {overall_rmse:.3f}, MAE: {overall_mae:.3f}, SCORE:  {total_score:.3f}"
-    )
+    # print(
+    #     f"RMSE: {overall_rmse:.3f}, MAE: {overall_mae:.3f}, SCORE:  {total_score:.3f}"
+    # )
 
     return overall_rmse, overall_mae, total_score
 

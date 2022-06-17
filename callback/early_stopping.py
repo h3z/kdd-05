@@ -20,6 +20,8 @@ class EarlyStopping(Callback):
         self.second_best_state_dict = None
         self.second_best_epoch = 0
 
+        self.last_epoch = None
+
     def on_val_end(self, preds: np.ndarray, gts: np.ndarray, loss):
         pass
 
@@ -27,6 +29,8 @@ class EarlyStopping(Callback):
         pass
 
     def on_epoch_end(self, epoch, loss, val_loss, model: BaseModelApp) -> bool:
+        self.last_epoch = epoch
+
         if val_loss < self.min_loss:
             self.min_loss = val_loss
             self.counter = 0
@@ -46,7 +50,13 @@ class EarlyStopping(Callback):
         return not stop
 
     def on_train_finish(self, model: BaseModelApp):
-        model.load_checkpoint(self.best_state_dict)
+        torch.save(
+            copy.deepcopy(model.checkpoint()),
+            global_config.model_file_name(
+                prefix="last_", suffix=f"_epoch_{self.last_epoch}"
+            ),
+        )
+
         torch.save(
             self.best_state_dict,
             global_config.model_file_name(
@@ -60,3 +70,5 @@ class EarlyStopping(Callback):
                 prefix="second_best_", suffix=f"_epoch_{self.second_best_epoch}"
             ),
         )
+
+        # model.load_checkpoint(self.best_state_dict)

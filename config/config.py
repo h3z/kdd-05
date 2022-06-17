@@ -16,11 +16,18 @@ __WANDB_CLOSE__ = "close"
 # IS_DEBUG = False
 IS_DEBUG = False
 DEBUG_CONFIG = {
-    "exp_file": "exp/gru/2/config.json",
-    "checkpoints": "exp/gru/2/checkpoints",
-    "wandb": "close",
-    "train": 0,
+    "exp_file": "exp/tmp/config.json",
+    "checkpoints": "exp/tmp/checkpoints",
+    "wandb": "offline",
+    "train": 1,
 }
+
+# DEBUG_CONFIG = {
+#     "exp_file": "exp/gru/1/config.json",
+#     "checkpoints": "exp/gru/1/checkpoints",
+#     "wandb": "offline",
+#     "train": 0,
+# }
 
 
 class Config:
@@ -119,31 +126,30 @@ class Config:
         return f"{self.checkpoints_dir}/{prefix}_{turbine}_{cuda}_{suffix}.pt"
 
     def init_wandb(self):
-        if self.wandb_enable:
-            wandb.init(config=self.conf, **self.wandb_conf)
+        if self.wandb_conf["mode"] != __WANDB_CLOSE__:
+            wandb.init(config=self.conf, **self.wandb_conf, reinit=True)
 
-    def log(self, json):
+    def log(self, json, step=None):
         if self.wandb_enable:
-            wandb.log(json)
+            wandb.log(json, step)
 
     def wandb_finish(self):
         if self.wandb_enable:
             wandb.finish()
 
-    def __getattr__(self, name: str):
+    def update(self, __dict__):
+        self.conf.update(__dict__)
         if self.wandb_enable:
-            return wandb.config[name] if name in wandb.config else None
-        else:
-            return self.conf[name] if name in self.conf else None
+            wandb.config.update(__dict__, allow_val_change=True)
+
+    def __getattr__(self, name: str):
+        return self.conf[name] if name in self.conf else None
 
     def __getitem__(self, key):
         return self.__getattr__(key)
 
     def __str__(self) -> str:
-        if self.wandb_enable:
-            return str(wandb.config)
-        else:
-            return str(self.conf)
+        return str(self.conf)
 
 
 global_config = Config()
