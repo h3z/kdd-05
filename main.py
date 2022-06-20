@@ -7,7 +7,7 @@ import numpy as np
 import torch
 
 import utils
-from callback import cache_checkpoints, early_stopping, wandb_callback
+from callback import cache_checkpoints, early_stopping, wandb_callback, score_callback
 from config.config import global_config
 from data import data_loader, data_process, data_reader, data_split
 from model import models
@@ -18,13 +18,26 @@ from utils import __NO_CACHE__, __SAVE_CACHE__, __USE_CACHE__, evaluate
 utils.fix_random()
 
 
-def train_val(model_app, train_ds, val_ds):
+def _score_(test_df, processor, origin_test_df, location):
+    def f(model_app, step):
+        test_ds = data_loader.DataLoader(test_df).get()
+        test_preds, _ = train.predict(model_app, test_ds)
+        test_preds = processor.postprocess(test_preds).squeeze()
+        rmse, mae, score = compute_score(test_df, origin_test_df, location, test_preds)
+        global_config.log({"score": score})
+        print("score", score)
+
+    return f
+
+
+def train_val(model_app, train_ds, val_ds, _cb):
     model_app.load_pretrained_params()
     # train
     callbacks = [
         cache_checkpoints.CacheCheckpoints(),
         early_stopping.EarlyStopping(),
         wandb_callback.WandbCallback(),
+        _cb,
     ]
 
     # train_pred_records = []
@@ -59,30 +72,22 @@ def train_val(model_app, train_ds, val_ds):
 
 def model_path(location):
     turbine_id = global_config.turbine
-    try:
-        name = str(
-            next(
-                Path(global_config.checkpoints_dir).glob(
-                    # "second_best__turbine_all_cuda_1__epoch_*.pt.fix"
-                    # -------- exp/attn-seq2seq/1/ second_best_turbine_37__10.pt --------
-                    # f"second_best_turbine_{turbine_id}__*.pt"
-                    # -------- exp/attn-seq2seq/2/ second_best_turbine_all_cuda_0__4.pt.fix --------
-                    # f"second_best_turbine_all_cuda_0__4.pt.fix"
-                    # -------- exp/attn-seq2seq/3/ second_best__turbine_9___epoch_3.pt --------
-                    f"second_best__turbine_{turbine_id}___epoch_*.pt"
-                    # -------- exp/transformer/2/ second_best__turbine_all_cuda_0__epoch_7.pt.fix --------
-                    # f"second_best__turbine_all_cuda_0__epoch_*.pt.fix"
-                    # f"second_best__turbine_all_cuda_1__epoch_*.pt.fix"
-                    # -------- exp/transformer/3/ second_best__turbine_col_0___epoch_9.pt --------
-                    # f"second_best__turbine_col_{location.query('TurbID == @turbine_id').col.values[0]}___epoch_*.pt"
-                    # -------- exp/transformer/loss-1/ second_best__turbine_col_0_cuda_0__epoch_10.pt.fix --------
-                    # f"second_best__turbine_col_{dr.location.query('TurbID == @turbine_id').col.values[0]}_cuda_0__epoch_*.pt.fix"
-                )
-            )
-        )
-    except:
-        print("skip")
-        return -1, -1, -1, -1
+    # "second_best__turbine_all_cuda_1__epoch_*.pt.fix"
+    # -------- exp/attn-seq2seq/1/ second_best_turbine_37__10.pt --------
+    # f"second_best_turbine_{turbine_id}__*.pt"
+    # -------- exp/attn-seq2seq/2/ second_best_turbine_all_cuda_0__4.pt.fix --------
+    # f"second_best_turbine_all_cuda_0__4.pt.fix"
+    # -------- exp/attn-seq2seq/3/ second_best__turbine_9___epoch_3.pt --------
+    name = f"second_best__turbine_{turbine_id}___epoch_*.pt"
+    # -------- exp/transformer/2/ second_best__turbine_all_cuda_0__epoch_7.pt.fix --------
+    # f"second_best__turbine_all_cuda_0__epoch_*.pt.fix"
+    # f"second_best__turbine_all_cuda_1__epoch_*.pt.fix"
+    # -------- exp/transformer/3/ second_best__turbine_col_0___epoch_9.pt --------
+    # f"second_best__turbine_col_{location.query('TurbID == @turbine_id').col.values[0]}___epoch_*.pt"
+    # -------- exp/transformer/loss-1/ second_best__turbine_col_0_cuda_0__epoch_10.pt.fix --------
+    # f"second_best__turbine_col_{dr.location.query('TurbID == @turbine_id').col.values[0]}_cuda_0__epoch_*.pt.fix"
+    print(global_config.checkpoints_dir, name)
+    name = str(next(Path(global_config.checkpoints_dir).glob(name)))
 
     print(f"load model: {name}")
     return name
@@ -119,24 +124,31 @@ def prepare_data():
 
     # split
     train_dfs, val_dfs, test_dfs = data_split.split(df)
-
+    print("cv len", len(train_dfs))
     return train_dfs, val_dfs, test_dfs, location
 
 
 def cv_i(ck_dir, i, train_dfs, val_dfs, test_dfs, location, args):
+
     global_config.checkpoints_dir = f"{ck_dir}/cv_{i}"
     os.makedirs(global_config.checkpoints_dir, exist_ok=True)
 
-    if args.train:
+    train_df = train_dfs[i]
+    val_df = val_dfs[i]
+    test_df = test_dfs[i]
+    origin_test_df = test_df.copy()
+    print(
+        f"train size: {len(train_df)/utils.DAY}, val size: {len(val_df)/utils.DAY}, test size: {len(test_df)/utils.DAY}"
+    )
 
+    if args.train:
+        global_config.init_wandb()
+        global_config.update({"cv": i})
+        print("train config:", global_config)
         train_df = train_dfs[i]
         val_df = val_dfs[i]
         test_df = test_dfs[i]
         origin_test_df = test_df.copy()
-
-        print(
-            f"train size: {len(train_df)/utils.DAY}, val size: {len(val_df)/utils.DAY}, test size: {len(test_df)/utils.DAY}"
-        )
 
         # preprocess
         processor = data_process.DataProcess(train_df)
@@ -150,13 +162,19 @@ def cv_i(ck_dir, i, train_dfs, val_dfs, test_dfs, location, args):
 
         model_app = models.get(len(train_ds))
 
-        train_val(model_app, train_ds, val_ds)
+        _cb = score_callback.ScoreCallback(
+            _score_(test_df, processor, origin_test_df, location)
+        )
+
+        train_val(model_app, train_ds, val_ds, _cb)
         # 下边这部分基于自己的 test_df 打分，其实没必要，所以只放在训练时候顺便看一眼，先留着看看吧
-        test_ds = data_loader.DataLoader(test_df).get()
-        test_preds, _ = train.predict(model_app, test_ds)
-        test_preds = processor.postprocess(test_preds).squeeze()
-        rmse, mae, score = compute_score(test_df, origin_test_df, location, test_preds)
-        print("score", score)
+        # test_ds = data_loader.DataLoader(test_df).get()
+        # test_preds, _ = train.predict(model_app, test_ds)
+        # test_preds = processor.postprocess(test_preds).squeeze()
+        # rmse, mae, score = compute_score(test_df, origin_test_df, location, test_preds)
+        # print("score", score)
+        global_config.wandb_finish()
+
     else:
         name = model_path(location)
         print(name)
@@ -167,7 +185,6 @@ def cv_i(ck_dir, i, train_dfs, val_dfs, test_dfs, location, args):
 
 
 def turbine_i(args, turbine_id) -> BaseModelApp:
-    global_config.init_wandb()
 
     global_config.turbine = (
         turbine_id if global_config.data_version != "all_turbines" else None
@@ -193,43 +210,35 @@ def turbine_i(args, turbine_id) -> BaseModelApp:
     test_ds = data_loader.DataLoader(test_df).get()
 
     global_config.checkpoints_dir = ck_dir
+    scores = []
     for m in cv_models:
         test_preds, _ = train.predict(m, test_ds)
         test_preds = processor.postprocess(test_preds).squeeze()
         test_preds_cvs.append(test_preds)
+        scores.append(compute_score(test_df, origin_test_df, location, test_preds)[2])
 
     rmse, mae, score = compute_score(
         test_df, origin_test_df, location, np.mean(test_preds_cvs, axis=0)
     )
-    print("score", score)
-    global_config.log({"rmse": rmse, "mae": mae, "score": score})
+    scores.append(score)
+    print("scores", scores)
 
-    global_config.wandb_finish()
-
-    return rmse, mae, score
+    return rmse, mae, scores
 
 
 def main():
     print(datetime.datetime.now())
     args = utils.prep_env()
 
-    scores = np.zeros((args.capacity_to - args.capacity_from, 3))
+    scores = []
     for i in range(args.capacity_from + 1, args.capacity_to + 1):
         print(">>>>>>>>>>>>>> turbine", i, "<<<<<<<<<<<<<<<<<<")
         rmse, mae, score = turbine_i(args, i)
-        scores[i - args.capacity_from - 1] = [rmse, mae, score]
+        scores.append((i, *score))
 
     ########
-    print(list(range(args.capacity_from + 1, args.capacity_to + 1)))
-    print(f"rmse: \n{scores[:, 0]} \nmae: \n{scores[:, 1]} \nscore: \n{scores[:, 2]}")
-    print(
-        list(
-            zip(list(range(args.capacity_from + 1, args.capacity_to + 1)), scores[:, 2])
-        )
-    )
-    print(
-        f"rmse: {scores[:, 0].mean()}, mae: {scores[:, 1].mean()}, score: {scores[:, 2].mean()}"
-    )
+    print(scores)
+    print("score: ", np.array(scores)[:, -1].mean())
 
 
 if __name__ == "__main__":

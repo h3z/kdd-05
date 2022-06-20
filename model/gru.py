@@ -1,16 +1,16 @@
 import torch
 from torch import nn
 
-from config.config import global_config
+from config.config import global_config as config
 
 
 class SimpleGRU(nn.Module):
     def __init__(self):
         super().__init__()
-        self.hidden_size = global_config.hidden_size
-        self.num_layer = global_config.num_layer
-        self.output_timesteps = global_config.output_timesteps
-        self.input_size = global_config.input_size
+        self.hidden_size = config.hidden_size
+        self.num_layer = config.num_layer
+        self.output_timesteps = config.output_timesteps
+        self.input_size = config.input_size
 
         self.gru = nn.GRU(
             input_size=self.input_size,
@@ -18,7 +18,7 @@ class SimpleGRU(nn.Module):
             num_layers=self.num_layer,
             batch_first=True,
         )
-        self.dropout = nn.Dropout(0.05)
+        self.dropout = nn.Dropout(config.dropout)
         self.projection = nn.Linear(self.hidden_size, 1)
 
     def forward(self, input):
@@ -29,7 +29,7 @@ class SimpleGRU(nn.Module):
         hidden = torch.zeros(self.num_layer, batch, self.hidden_size).cuda()
         output, hidden = self.gru(x, hidden)
 
-        # output = self.dropout(output)
+        output = self.dropout(output)
         output = self.projection(output)
 
         return output[:, -self.output_timesteps :, -1:]

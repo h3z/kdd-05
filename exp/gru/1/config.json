@@ -16,5 +16,6 @@
     "model": "gru",
     "hidden_size": 48,
     "num_layer": 2,
-    "turbine": 1
+    "turbine": 1,
+    "split": "TimeSeriesSplit"
 }
