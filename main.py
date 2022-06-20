@@ -7,7 +7,7 @@ import numpy as np
 import torch
 
 import utils
-from callback import cache_checkpoints, early_stopping, wandb_callback, score_callback
+from callback import cache_checkpoints, early_stopping, score_callback, wandb_callback
 from config.config import global_config
 from data import data_loader, data_process, data_reader, data_split
 from model import models
@@ -18,12 +18,11 @@ from utils import __NO_CACHE__, __SAVE_CACHE__, __USE_CACHE__, evaluate
 utils.fix_random()
 
 
-def _score_(test_df, processor, origin_test_df, location):
+def _score_(test_ds, processor, origin_test_df, location):
     def f(model_app, step):
-        test_ds = data_loader.DataLoader(test_df).get()
         test_preds, _ = train.predict(model_app, test_ds)
         test_preds = processor.postprocess(test_preds).squeeze()
-        rmse, mae, score = compute_score(test_df, origin_test_df, location, test_preds)
+        rmse, mae, score = compute_score(origin_test_df, location, test_preds)
         global_config.log({"score": score})
         print("score", score)
 
@@ -93,7 +92,7 @@ def model_path(location):
     return name
 
 
-def compute_score(test_df, origin_test_df, location, test_preds):
+def compute_score(origin_test_df, location, test_preds):
     # test_gts = processor.postprocess(test_gts)[..., -1:]
     test_gts = np.concatenate(
         [
@@ -102,7 +101,7 @@ def compute_score(test_df, origin_test_df, location, test_preds):
         ]
     )
 
-    test_df = test_df.rename(columns=utils.to_origin_names)
+    origin_test_df = origin_test_df.rename(columns=utils.to_origin_names)
     pickle.dump(
         (test_preds, test_gts),
         open(
@@ -113,41 +112,23 @@ def compute_score(test_df, origin_test_df, location, test_preds):
 
     # utils.wandb_plot(train_pred_records, val_pred_records, test_preds, test_gts)
 
-    rmse, mae, score = evaluate([test_preds], [test_gts], [test_df])
+    rmse, mae, score = evaluate([test_preds], [test_gts], [origin_test_df])
     return rmse, mae, score
 
 
 def prepare_data():
     dr = data_reader.DataReader(global_config.turbine, global_config.col_turbine)
-    df = dr.train
-    location = dr.location
 
     # split
-    train_dfs, val_dfs, test_dfs = data_split.split(df)
+    train_dfs, val_dfs, test_dfs = data_split.split(dr.train)
     print("cv len", len(train_dfs))
-    return train_dfs, val_dfs, test_dfs, location
+    return train_dfs, val_dfs, test_dfs, dr.location
 
 
-def cv_i(ck_dir, i, train_dfs, val_dfs, test_dfs, location, args):
-
-    global_config.checkpoints_dir = f"{ck_dir}/cv_{i}"
-    os.makedirs(global_config.checkpoints_dir, exist_ok=True)
-
-    train_df = train_dfs[i]
-    val_df = val_dfs[i]
-    test_df = test_dfs[i]
-    origin_test_df = test_df.copy()
-    print(
-        f"train size: {len(train_df)/utils.DAY}, val size: {len(val_df)/utils.DAY}, test size: {len(test_df)/utils.DAY}"
-    )
-
+def cv_i(train_df, val_df, test_df, location, args):
     if args.train:
         global_config.init_wandb()
-        global_config.update({"cv": i})
         print("train config:", global_config)
-        train_df = train_dfs[i]
-        val_df = val_dfs[i]
-        test_df = test_dfs[i]
         origin_test_df = test_df.copy()
 
         # preprocess
@@ -159,20 +140,18 @@ def cv_i(ck_dir, i, train_dfs, val_dfs, test_dfs, location, args):
         # torch DataLoader
         train_ds = data_loader.DataLoader(train_df, is_train=True).get()
         val_ds = data_loader.DataLoader(val_df).get()
+        test_ds = data_loader.DataLoader(test_df).get()
 
         model_app = models.get(len(train_ds))
 
-        _cb = score_callback.ScoreCallback(
-            _score_(test_df, processor, origin_test_df, location)
+        train_val(
+            model_app,
+            train_ds,
+            val_ds,
+            score_callback.ScoreCallback(
+                _score_(test_ds, processor, origin_test_df, location)
+            ),
         )
-
-        train_val(model_app, train_ds, val_ds, _cb)
-        # 下边这部分基于自己的 test_df 打分，其实没必要，所以只放在训练时候顺便看一眼，先留着看看吧
-        # test_ds = data_loader.DataLoader(test_df).get()
-        # test_preds, _ = train.predict(model_app, test_ds)
-        # test_preds = processor.postprocess(test_preds).squeeze()
-        # rmse, mae, score = compute_score(test_df, origin_test_df, location, test_preds)
-        # print("score", score)
         global_config.wandb_finish()
 
     else:
@@ -196,9 +175,13 @@ def turbine_i(args, turbine_id) -> BaseModelApp:
 
     cv_models = []
     test_preds_cvs = []
-    ck_dir = global_config.checkpoints_dir
+    ck_root_dir = global_config.checkpoints_dir
     for i in range(len(train_dfs)):
-        m = cv_i(ck_dir, i, train_dfs, val_dfs, test_dfs, location, args)
+        global_config.checkpoints_dir = f"{ck_root_dir}/cv_{i}"
+        global_config.update({"cv": i})
+        os.makedirs(global_config.checkpoints_dir, exist_ok=True)
+
+        m = cv_i(train_dfs[i], val_dfs[i], test_dfs[i], location, args)
         cv_models.append(m)
 
     test_df = test_dfs[-1]
@@ -209,16 +192,16 @@ def turbine_i(args, turbine_id) -> BaseModelApp:
     test_df = processor.preprocess(test_df)
     test_ds = data_loader.DataLoader(test_df).get()
 
-    global_config.checkpoints_dir = ck_dir
+    global_config.checkpoints_dir = ck_root_dir
     scores = []
     for m in cv_models:
         test_preds, _ = train.predict(m, test_ds)
         test_preds = processor.postprocess(test_preds).squeeze()
         test_preds_cvs.append(test_preds)
-        scores.append(compute_score(test_df, origin_test_df, location, test_preds)[2])
+        scores.append(compute_score(origin_test_df, location, test_preds)[2])
 
     rmse, mae, score = compute_score(
-        test_df, origin_test_df, location, np.mean(test_preds_cvs, axis=0)
+        origin_test_df, location, np.mean(test_preds_cvs, axis=0)
     )
     scores.append(score)
     print("scores", scores)
@@ -231,10 +214,11 @@ def main():
     args = utils.prep_env()
 
     scores = []
-    for i in range(args.capacity_from + 1, args.capacity_to + 1):
-        print(">>>>>>>>>>>>>> turbine", i, "<<<<<<<<<<<<<<<<<<")
-        rmse, mae, score = turbine_i(args, i)
-        scores.append((i, *score))
+    for i in range(args.capacity_from, args.capacity_to):
+        turbine_id = i + 1
+        print(">>>>>>>>>>>>>> turbine", turbine_id, "<<<<<<<<<<<<<<<<<<")
+        rmse, mae, score = turbine_i(args, turbine_id)
+        scores.append((turbine_id, *score))
 
     ########
     print(scores)

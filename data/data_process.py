@@ -46,10 +46,6 @@ class DataProcess:
 
         self.scaler.fit(df[utils.feature_cols].values)
 
-        # self.scaler = StandardScaler()
-        # self.numerical_cols = [...]
-        # self.scaler.fit(df[self.numerical_cols].fillna(0).values)
-
     def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
         # print("preprocess, ", df.shape)
         df = df.fillna(0)

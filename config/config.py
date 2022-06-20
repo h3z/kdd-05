@@ -139,8 +139,8 @@ class Config:
 
     def update(self, __dict__):
         self.conf.update(__dict__)
-        if self.wandb_enable:
-            wandb.config.update(__dict__, allow_val_change=True)
+        # if self.wandb_enable:
+        #     wandb.config.update(__dict__, allow_val_change=True)
 
     def __getattr__(self, name: str):
         return self.conf[name] if name in self.conf else None
