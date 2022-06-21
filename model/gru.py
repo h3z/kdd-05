@@ -18,7 +18,7 @@ class SimpleGRU(nn.Module):
             num_layers=self.num_layer,
             batch_first=True,
         )
-        self.dropout = nn.Dropout(config.dropout)
+        self.dropout = nn.Dropout(config.dropout if config.dropout else 0)
         self.projection = nn.Linear(self.hidden_size, 1)
 
     def forward(self, input):

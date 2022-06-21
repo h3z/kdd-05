@@ -1,19 +1,20 @@
 {
-    "~lr": 0.0001,
+    "~lr": 0.001,
     "~batch_size": 64,
     "~epochs": 10,
-    "~early_stopping_patience": 5,
+    "~early_stopping_patience": 10,
     "~optimizer": "adam",
     "~loss": "mse",
     "scheduler": "linear",
     "warmup": 0.1,
     "data_version": "full",
-    "scaler": "all_col",
+    "scaler": "all_turbines_all_col",
     "truncate": 0.98,
     "input_size": 10,
     "input_timesteps": 288,
     "output_timesteps": 288,
     "model": "transformer",
-    "n_heads": 16,
-    "dim_val": 64
+    "n_heads": 4,
+    "dim_val": 64,
+    "split": "TimeSeriesSplit"
 }
