@@ -2,7 +2,7 @@
     "~lr": 0.0005,
     "~batch_size": 128,
     "~epochs": 10,
-    "~early_stopping_patience": 20,
+    "~early_stopping_patience": 10,
     "~optimizer": "adam",
     "~loss": "mse",
     "scheduler": "linear",
@@ -16,7 +16,5 @@
     "model": "gru",
     "hidden_size": 48,
     "num_layer": 2,
-    "turbine": 1,
-    "dropout": 0.0,
-    "split": "TimeSeriesSplit"
+    "turbine": 1
 }

@@ -20,11 +20,27 @@ utils.fix_random()
 
 def _score_(test_ds, processor, origin_test_df, location):
     def f(model_app, step):
-        test_preds, _ = train.predict(model_app, test_ds)
+        return
+        test_preds, gts = train.predict(model_app, test_ds)
+
+        # r2 task
+        a = test_preds.reshape(-1)
+        b = gts.reshape(-1)
+        r2 = 1 - ((np.sum((a - b) ** 2)) / (np.sum((np.mean(b) - b) ** 2)))
+
         test_preds = processor.postprocess(test_preds).squeeze()
-        rmse, mae, score = compute_score(origin_test_df, location, test_preds)
-        global_config.log({"score": score})
-        print("score", score)
+        rmse, mae, score, debug_maes, debug_rmses = compute_score(
+            origin_test_df, location, test_preds
+        )
+
+        global_config.log(
+            {
+                "score": score,
+                "r2": r2,
+                "score-std": ((np.array(debug_maes) + np.array(debug_rmses)) / 2).std(),
+            }
+        )
+        print("score", score, "r2", r2)
 
     return f
 
@@ -71,20 +87,10 @@ def train_val(model_app, train_ds, val_ds, _cb):
 
 def model_path(location):
     turbine_id = global_config.turbine
-    # "second_best__turbine_all_cuda_1__epoch_*.pt.fix"
-    # -------- exp/attn-seq2seq/1/ second_best_turbine_37__10.pt --------
-    # f"second_best_turbine_{turbine_id}__*.pt"
-    # -------- exp/attn-seq2seq/2/ second_best_turbine_all_cuda_0__4.pt.fix --------
-    # f"second_best_turbine_all_cuda_0__4.pt.fix"
-    # -------- exp/attn-seq2seq/3/ second_best__turbine_9___epoch_3.pt --------
-    name = f"second_best__turbine_{turbine_id}___epoch_*.pt"
-    # -------- exp/transformer/2/ second_best__turbine_all_cuda_0__epoch_7.pt.fix --------
-    # f"second_best__turbine_all_cuda_0__epoch_*.pt.fix"
-    # f"second_best__turbine_all_cuda_1__epoch_*.pt.fix"
-    # -------- exp/transformer/3/ second_best__turbine_col_0___epoch_9.pt --------
-    # f"second_best__turbine_col_{location.query('TurbID == @turbine_id').col.values[0]}___epoch_*.pt"
-    # -------- exp/transformer/loss-1/ second_best__turbine_col_0_cuda_0__epoch_10.pt.fix --------
-    # f"second_best__turbine_col_{dr.location.query('TurbID == @turbine_id').col.values[0]}_cuda_0__epoch_*.pt.fix"
+
+    # name = f"second_best__turbine_{turbine_id}_*.pt.fix"
+    name = f"second_best__turbine_{turbine_id}_*.pt"
+    # name = f"last__turbine_{turbine_id}___epoch_*.pt"
     print(global_config.checkpoints_dir, name)
     name = str(next(Path(global_config.checkpoints_dir).glob(name)))
 
@@ -110,10 +116,20 @@ def compute_score(origin_test_df, location, test_preds):
         ),
     )
 
+    pickle.dump(
+        origin_test_df,
+        open(
+            f"{global_config.checkpoints_dir}/test_preds_{global_config.turbine}_origin_test_df.pkl",
+            "wb",
+        ),
+    )
+
     # utils.wandb_plot(train_pred_records, val_pred_records, test_preds, test_gts)
 
-    rmse, mae, score = evaluate([test_preds], [test_gts], [origin_test_df])
-    return rmse, mae, score
+    rmse, mae, score, debug_maes, debug_rmses = evaluate(
+        [test_preds], [test_gts], [origin_test_df]
+    )
+    return rmse, mae, score, debug_maes, debug_rmses
 
 
 def prepare_data():
@@ -128,19 +144,26 @@ def prepare_data():
 def cv_i(train_df, val_df, test_df, location, args):
     if args.train:
         global_config.init_wandb()
-        print("train config:", global_config)
-        origin_test_df = test_df.copy()
 
-        # preprocess
-        processor = data_process.DataProcess(train_df)
-        train_df = processor.preprocess(train_df)
-        val_df = processor.preprocess(val_df)
-        test_df = processor.preprocess(test_df)
+    origin_test_df = test_df.copy()
+
+    # preprocess
+    processor = data_process.DataProcess(train_df)
+    train_df = processor.preprocess(train_df)
+    val_df = processor.preprocess(val_df)
+    test_df = processor.preprocess(test_df)
+    origin_test_df.loc[:, ["na_count", "is_valid"]] = test_df.loc[
+        :, ["na_count", "is_valid"]
+    ]
+
+    test_ds = data_loader.DataLoader(test_df).get()
+
+    if args.train:
+        print("train config:", global_config)
 
         # torch DataLoader
         train_ds = data_loader.DataLoader(train_df, is_train=True).get()
         val_ds = data_loader.DataLoader(val_df).get()
-        test_ds = data_loader.DataLoader(test_df).get()
 
         model_app = models.get(len(train_ds))
 
@@ -152,15 +175,31 @@ def cv_i(train_df, val_df, test_df, location, args):
                 _score_(test_ds, processor, origin_test_df, location)
             ),
         )
-        global_config.wandb_finish()
-
     else:
         name = model_path(location)
         print(name)
         model_app = models.get()
         model_app.load_checkpoint(torch.load(name, map_location="cuda"))
 
-    return model_app
+    # 在 cv 自己的 test 上的得分
+    test_preds, _ = train.predict(model_app, test_ds)
+    test_preds = processor.postprocess(test_preds).squeeze()
+
+    rmse, mae, score, debug_maes, debug_rmses = compute_score(
+        origin_test_df, location, test_preds
+    )
+
+    a = np.array(debug_maes)
+    b = np.array(debug_rmses)
+    c = a + b
+    c /= 2
+    score_distribute = {"score mean": c.mean(), "score std": c.std()}
+    global_config.log(score_distribute)
+    print(score_distribute)
+
+    if args.train:
+        global_config.wandb_finish()
+    return model_app, score
 
 
 def turbine_i(args, turbine_id) -> BaseModelApp:
@@ -176,49 +215,52 @@ def turbine_i(args, turbine_id) -> BaseModelApp:
     cv_models = []
     test_preds_cvs = []
     ck_root_dir = global_config.checkpoints_dir
+    cv_scores = []
     for i in range(len(train_dfs)):
         global_config.checkpoints_dir = f"{ck_root_dir}/cv_{i}"
         global_config.update({"cv": i})
         os.makedirs(global_config.checkpoints_dir, exist_ok=True)
 
-        m = cv_i(train_dfs[i], val_dfs[i], test_dfs[i], location, args)
+        m, cv_score = cv_i(train_dfs[i], val_dfs[i], test_dfs[i], location, args)
+        print(f"turbine: {turbine_id}, cv: {i}, score: {cv_score}")
         cv_models.append(m)
+        cv_scores.append(cv_score)
 
-    test_df = test_dfs[-1]
-    train_df = train_dfs[-1]
-    origin_test_df = test_df.copy()
-    # 现在开始不希望处理数据时依赖训练集了。所以以后 scaler 尽量不要用 all_col，直接用之前计算好的常数把。（有新特征的话再重新计算）
-    processor = data_process.DataProcess(train_df)
-    test_df = processor.preprocess(test_df)
-    test_ds = data_loader.DataLoader(test_df).get()
+    # test_df = test_dfs[-1]
+    # train_df = train_dfs[-1]
+    # origin_test_df = test_df.copy()
+    # # 现在开始不希望处理数据时依赖训练集了。所以以后 scaler 尽量不要用 all_col，直接用之前计算好的常数把。（有新特征的话再重新计算）
+    # processor = data_process.DataProcess(train_df)
+    # test_df = processor.preprocess(test_df)
+    # test_ds = data_loader.DataLoader(test_df).get()
 
     global_config.checkpoints_dir = ck_root_dir
-    scores = []
-    for m in cv_models:
-        test_preds, _ = train.predict(m, test_ds)
-        test_preds = processor.postprocess(test_preds).squeeze()
-        test_preds_cvs.append(test_preds)
-        scores.append(compute_score(origin_test_df, location, test_preds)[2])
+    # scores = []
+    # for m in cv_models:
+    #     test_preds, _ = train.predict(m, test_ds)
+    #     test_preds = processor.postprocess(test_preds).squeeze()
+    #     test_preds_cvs.append(test_preds)
+    #     scores.append(compute_score(origin_test_df, location, test_preds)[2])
 
-    rmse, mae, score = compute_score(
-        origin_test_df, location, np.mean(test_preds_cvs, axis=0)
-    )
-    scores.append(score)
-    print("scores", scores)
+    # rmse, mae, score = compute_score(
+    #     origin_test_df, location, np.mean(test_preds_cvs, axis=0)
+    # )
+    # scores.append(score)
+    # print("scores", scores)
 
-    return rmse, mae, scores
+    # return rmse, mae, scores, cv_scores
+    return 0, 0, [], cv_scores
 
 
 def main():
-    print(datetime.datetime.now())
     args = utils.prep_env()
 
     scores = []
     for i in range(args.capacity_from, args.capacity_to):
         turbine_id = i + 1
         print(">>>>>>>>>>>>>> turbine", turbine_id, "<<<<<<<<<<<<<<<<<<")
-        rmse, mae, score = turbine_i(args, turbine_id)
-        scores.append((turbine_id, *score))
+        rmse, mae, score, cv_scores = turbine_i(args, turbine_id)
+        scores.append((turbine_id, *cv_scores, *score))
 
     ########
     print(scores)
@@ -226,4 +268,6 @@ def main():
 
 
 if __name__ == "__main__":
+    print("start", datetime.datetime.now())
     main()
+    print("end", datetime.datetime.now())

@@ -41,8 +41,8 @@ class BaseModelApp:
     def eval(self):
         self.model.eval()
 
-    def criterion(self, pred_y, batch_y):
-        return self.loss(pred_y, batch_y)
+    def criterion(self, pred_y, batch_y, weights):
+        return self.loss(pred_y, batch_y, weights)
 
     def load_pretrained_params(self):
         pass

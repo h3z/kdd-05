@@ -46,10 +46,11 @@ def prep_env():
     parser = argparse.ArgumentParser()
     parser.add_argument("--capacity_to", type=int, default=1)
     parser.add_argument("--capacity_from", type=int, default=0)
-    parser.add_argument("--exp_file", type=str)
-    parser.add_argument(
-        "--checkpoints", type=str, default=f"checkpoints/checkpoints_{timestamp}"
-    )
+    parser.add_argument("--exp", type=str)
+    parser.add_argument("--exp_dir", type=str, default="exp/623/")
+    # parser.add_argument(
+    #     "--checkpoints", type=str, default=f"checkpoints/checkpoints_{timestamp}"
+    # )
     parser.add_argument("--train", type=int, default=1)
     parser.add_argument(
         "--cache",
@@ -65,8 +66,6 @@ def prep_env():
     if config.IS_DEBUG:
         for k in config.DEBUG_CONFIG:
             namespace.__setattr__(k, config.DEBUG_CONFIG[k])
-    Path(namespace.checkpoints).mkdir(exist_ok=True, parents=True)
-    print("Checkpoints:", namespace.checkpoints)
 
     global_config.init(namespace, extra)
 
@@ -100,8 +99,16 @@ def evaluate(predictions, grounds, raw_data_lst):
         "is_debug": False,
     }
 
+    #### check ###
+    for i in range(len(grounds)):
+        grounds[i] = np.nan_to_num(grounds[i].squeeze())
+        assert predictions[i].shape == grounds[i].shape
+        assert np.isnan(predictions[i]).sum() == 0
+        assert np.isnan(grounds[i]).sum() == 0
+
     preds = np.array(predictions)
     gts = np.array(grounds)
+
     preds = np.sum(preds, axis=0)
     gts = np.sum(gts, axis=0)
 
@@ -121,7 +128,7 @@ def evaluate(predictions, grounds, raw_data_lst):
     # out_len = settings["output_len"]
     # mae, rmse = metrics.regressor_scores(predictions[:, -out_len:, :] / 1000, grounds[:, -out_len:, :] / 1000)
 
-    overall_mae, overall_rmse = regressor_detailed_scores(
+    overall_mae, overall_rmse, maes, rmses = regressor_detailed_scores(
         predictions, grounds, raw_data_lst, settings
     )
 
@@ -133,7 +140,7 @@ def evaluate(predictions, grounds, raw_data_lst):
     #     f"RMSE: {overall_rmse:.3f}, MAE: {overall_mae:.3f}, SCORE:  {total_score:.3f}"
     # )
 
-    return overall_rmse, overall_mae, total_score
+    return overall_rmse, overall_mae, total_score, maes, rmses
 
 
 def ignore_zeros(predictions, grounds):
@@ -299,10 +306,13 @@ def turbine_scores(pred, gt, raw_data, examine_len, stride=1):
         | (raw_data["Ndir"] < -720)
         | (raw_data["Ndir"] > 720)
     )
+    window_starts = raw_data.query("na_count < 6")
     maes, rmses = [], []
     cnt_sample, out_seq_len = pred.shape
     for i in range(0, cnt_sample, stride):
-        indices = np.where(~cond[i : out_seq_len + i])
+        from_idx = window_starts.iloc[[i]].index[0]
+        indices = ~cond.loc[from_idx : from_idx + out_seq_len - 1]
+        # indices = np.where(~cond[i : out_seq_len + i])
         prediction = pred[i]
         prediction = prediction[indices]
         targets = gt[i]
@@ -316,7 +326,7 @@ def turbine_scores(pred, gt, raw_data, examine_len, stride=1):
         rmses.append(_rmse)
     avg_mae = np.array(maes).mean()
     avg_rmse = np.array(rmses).mean()
-    return avg_mae, avg_rmse
+    return avg_mae, avg_rmse, maes, rmses
 
 
 def regressor_detailed_scores(predictions, gts, raw_df_lst, settings):
@@ -337,7 +347,7 @@ def regressor_detailed_scores(predictions, gts, raw_df_lst, settings):
         prediction = predictions[i]
         gt = gts[i]
         raw_df = raw_df_lst[i]
-        _mae, _rmse = turbine_scores(
+        _mae, _rmse, maes, rmses = turbine_scores(
             prediction, gt, raw_df, settings["output_len"], settings["stride"]
         )
         if settings["is_debug"]:
@@ -352,7 +362,7 @@ def regressor_detailed_scores(predictions, gts, raw_df_lst, settings):
         all_rmse.append(_rmse)
     total_mae = np.array(all_mae).sum()
     total_rmse = np.array(all_rmse).sum()
-    return total_mae, total_rmse
+    return total_mae, total_rmse, maes, rmses
 
 
 def regressor_metrics(pred, gt):

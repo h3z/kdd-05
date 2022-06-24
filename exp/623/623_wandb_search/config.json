@@ -1,8 +1,8 @@
 {
     "~lr": 0.0005,
     "~batch_size": 128,
-    "~epochs": 10,
-    "~early_stopping_patience": 20,
+    "~epochs": 20,
+    "~early_stopping_patience": 3,
     "~optimizer": "adam",
     "~loss": "mse",
     "scheduler": "linear",
@@ -18,5 +18,5 @@
     "num_layer": 2,
     "turbine": 1,
     "dropout": 0.0,
-    "split": "TimeSeriesSplit"
+    "split": ""
 }

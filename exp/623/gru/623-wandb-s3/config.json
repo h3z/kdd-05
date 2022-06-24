@@ -1,8 +1,8 @@
 {
-    "~lr": 0.0005,
-    "~batch_size": 128,
-    "~epochs": 10,
-    "~early_stopping_patience": 20,
+    "~lr": 0.001,
+    "~batch_size": 256,
+    "~epochs": 20,
+    "~early_stopping_patience": 10,
     "~optimizer": "adam",
     "~loss": "mse",
     "scheduler": "linear",
@@ -11,12 +11,12 @@
     "scaler": "all_turbines_all_col",
     "truncate": 0.98,
     "input_size": 10,
-    "input_timesteps": 288,
+    "input_timesteps": 1440,
     "output_timesteps": 288,
     "model": "gru",
     "hidden_size": 48,
-    "num_layer": 2,
+    "num_layer": 3,
     "turbine": 1,
-    "dropout": 0.0,
-    "split": "TimeSeriesSplit"
+    "split": "",
+    "dropout": 0.0
 }

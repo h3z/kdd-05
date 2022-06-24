@@ -14,7 +14,7 @@ from model.base_model import BaseModelApp
 def epoch_train(model_app: BaseModelApp, train_loader, callbacks: List[Callback] = []):
     model_app.train()
     losses = []
-    for i, (batch_x, batch_y) in (
+    for i, (batch_x, batch_y, weights) in (
         pbar := tqdm(enumerate(train_loader), total=len(train_loader), unit=" batch")
     ):
         # batch_x = batch_x.to(torch.float32).cuda()
@@ -23,7 +23,7 @@ def epoch_train(model_app: BaseModelApp, train_loader, callbacks: List[Callback]
         model_app.zero_grad()
         pred_y = model_app.forward(batch_x, batch_y, is_training=True)
 
-        loss = model_app.criterion(pred_y, batch_y)
+        loss = model_app.criterion(pred_y, batch_y, weights)
         loss.backward()
         model_app.step()
 
@@ -47,13 +47,13 @@ def epoch_val(model_app: BaseModelApp, val_loader, callbacks: List[Callback] = [
         model_app.eval()
 
         validation_losses = []
-        for i, (batch_x, batch_y) in tqdm(
+        for i, (batch_x, batch_y, weights) in tqdm(
             enumerate(val_loader), total=len(val_loader), unit=" batch"
         ):
             # batch_x = batch_x.to(torch.float32).cuda()
             # batch_y = batch_y.to(torch.float32).cuda()
             pred_y = model_app.forward(batch_x, batch_y)
-            loss = model_app.criterion(pred_y, batch_y)
+            loss = model_app.criterion(pred_y, batch_y, weights)
             validation_losses.append(loss)
 
     [cb.on_val_end(pred_y, batch_y, loss) for cb in callbacks]
@@ -72,7 +72,7 @@ def predict(model_app: BaseModelApp, test_loader):
 
         preds = []
         gts = []
-        for i, (batch_x, batch_y) in tqdm(
+        for i, (batch_x, batch_y, weights) in tqdm(
             enumerate(test_loader), total=len(test_loader), unit=" batch"
         ):
             # batch_x = batch_x.to(torch.float32).cuda()

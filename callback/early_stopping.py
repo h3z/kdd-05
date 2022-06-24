@@ -71,4 +71,4 @@ class EarlyStopping(Callback):
             ),
         )
 
-        # model.load_checkpoint(self.best_state_dict)
+        model.load_checkpoint(self.second_best_state_dict)

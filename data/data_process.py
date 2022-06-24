@@ -1,3 +1,5 @@
+import datetime
+
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
@@ -48,7 +50,27 @@ class DataProcess:
 
     def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
         # print("preprocess, ", df.shape)
-        df = df.fillna(0)
+
+        # 记录窗口内的 nan 数量
+        isna = df.active_power.isna()
+        window_size = global_config.input_timesteps + global_config.output_timesteps
+        df["na_count"] = isna.rolling(window_size).sum().shift(-window_size + 1)
+
+        # df = df.fillna(0)
+        time_67 = pd.to_datetime("13:10", format="%H:%M").time()
+        df.loc[
+            df.query("day == 66 or (day ==  67 and time <= @time_67)").index,
+            utils.feature_cols,
+        ] = 0
+        tmp = df.query(f"active_power.isna()")
+        while len(tmp) > 0:
+            df.loc[tmp.index, utils.feature_cols] = df.loc[
+                tmp.index + 1, utils.feature_cols
+            ].values
+            tmp = df.query(f"active_power.isna()")
+
+        df = self.fe(df)
+
         df.active_power = df.active_power.clip(lower=0)
         df.reactive_power = df.reactive_power.clip(lower=0)
 
@@ -60,9 +82,10 @@ class DataProcess:
                 df[i] = df[i].clip(lower=lower, upper=upper)
 
         df[utils.feature_cols] = self.scaler.transform(df[utils.feature_cols].values)
+        # df.spd = df.spd * 10
+
         # print("preprocess done, ", df.shape)
 
-        df = self.fe(df)
         return df
 
     def fe(self, df):
@@ -75,12 +98,12 @@ class DataProcess:
         return t
 
     def fe_1_is_vald(self, df):
-        df["id_valid"] = df.index.isin(
+        df["is_valid"] = df.index.isin(
             df.query(
-                "(active_power <= 0 and spd > 2.5) \
+                "not (active_power <= 0 and spd > 2.5) \
                     or (pab1 > 89 or pab2 > 89 or pab3 > 89) \
                     or (dir < -180 or dir > 180) \
                     or (nacelle_dir < -720 or nacelle_dir > 720)"
             ).index
-        )
+        ).astype(int)
         return df

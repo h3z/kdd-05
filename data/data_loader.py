@@ -7,38 +7,46 @@ import torch
 
 from config.config import global_config
 from data.transformer import transformer_data_loader
-from utils import feature_cols
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, data: np.ndarray, turbine_count: int):
+    def __init__(self, data_df: pd.DataFrame, turbine_count: int, sampler_len: int):
         self.input_timesteps = global_config.input_timesteps
-        self.data = data
 
         input_steps = global_config.input_timesteps
         output_steps = global_config.output_timesteps
         self.total_timesteps = input_steps + output_steps
-        self.len = len(data) - (self.total_timesteps - 1) * turbine_count
+        self.len = sampler_len
+
+        # 为了解决 x 和 y 共用一列数据，并且顺序不能乱的问题
+        data_df["__is_valid"] = data_df["is_valid"]
+        self.data = (
+            torch.tensor(data_df[global_config.features + ["__is_valid"]].values)
+            .to(torch.float32)
+            .cuda()
+        )
 
     def __getitem__(self, index):
         mid = index + self.input_timesteps
-        x = self.data[index:mid, :]
+        # : -> :-1，最后一列新增了 is_valid
+        x = self.data[index:mid, :-1]
         # 这个 -1 要注意。可能随着特征变化，就不再指向 y 了。
         # 目前主要是自定义损失时候，想要通过 y 传递一些权重过去
-        y = self.data[mid : index + self.total_timesteps, -1:]
-
-        return x, y
+        # 2022年06月21日16:57:05 -1 -> -2，新增了 is_valid
+        y = self.data[mid : index + self.total_timesteps, -2:-1]
+        w = self.data[mid : index + self.total_timesteps, -1]
+        return x, y, w
 
     def __len__(self):
         return self.len
 
 
 class TransformerDataset(Dataset):
-    def __init__(self, data: np.ndarray, turbine_count: int):
-        super().__init__(data, turbine_count)
+    def __init__(self, data_df: pd.DataFrame, turbine_count: int, sampler_len: int):
+        super().__init__(data_df, turbine_count, sampler_len)
 
     def __getitem__(self, index):
-        window = self.data[index : index + self.total_timesteps]
+        window = self.data_df[index : index + self.total_timesteps]
         src, trg, trg_y = transformer_data_loader.get_src_trg(window)
 
         trg = trg.clone()
@@ -48,14 +56,17 @@ class TransformerDataset(Dataset):
         #     trg[1:] = 0
         # trg = trg[:, -1]
 
+        # TODO loss这里要修
         trg_y = trg_y[:, -1]
 
         return (src, trg), trg_y
 
 
 class Sampler(torch.utils.data.Sampler):
-    def __init__(self, data: np.ndarray, turbine_count: int, is_train: bool) -> None:
-        super().__init__(data)
+    def __init__(
+        self, data_df: pd.DataFrame, turbine_count: int, is_train: bool
+    ) -> None:
+        super().__init__(data_df)
         self.is_train = is_train
 
         if global_config.distributed:
@@ -65,24 +76,23 @@ class Sampler(torch.utils.data.Sampler):
             self.rank = 0
             self.num_replicas = 1
 
-        self.total_timesteps = (
-            global_config.input_timesteps + global_config.output_timesteps
-        )
-        self.total_len = len(data) - (self.total_timesteps - 1) * turbine_count
-        # self.total_len //= 10
-        self.len = self.total_len // self.num_replicas
-        self.turbine_count = turbine_count
-        self.data_len = len(data)
+        total_timesteps = global_config.input_timesteps + global_config.output_timesteps
+        data_len = len(data_df)
+
+        if self.is_train:
+            lst = torch.randperm(data_len).tolist()
+        else:
+            lst = list(range(data_len))
+        each_turbine = data_len / turbine_count
+        threshold = each_turbine - (total_timesteps - 1)
+        lst = [i for i in lst if i % each_turbine < threshold]
+        lst = np.array(lst)[data_df.iloc[lst].na_count < 6]
+
+        self.len = len(lst)
+        self.lst = lst
 
     def __iter__(self) -> List[int]:
-        if self.is_train:
-            lst = torch.randperm(self.data_len).tolist()
-        else:
-            lst = list(range(self.data_len))
-        each_turbine = self.data_len / self.turbine_count
-        threshold = each_turbine - (self.total_timesteps - 1)
-        lst = [i for i in lst if i % each_turbine < threshold]
-        return iter(self.distributed(lst) if self.is_train else lst)
+        return iter(self.distributed(self.lst) if self.is_train else self.lst)
 
     def distributed(self, lst):
         return lst[self.rank : len(lst) : self.num_replicas]
@@ -99,24 +109,15 @@ class DataLoader:
         # 过滤后一共多少台机组，滑窗时候需要从这个机组跳到下个机组要用到
         self.turbine_count = df.id.nunique()
 
-        # 特征列，如果有自定义特征，需要在这里加，这里硬编码了，暂时不优化，后期应该会整合到配置文件中。
-        df = df[feature_cols]
-
-        # smaller size for training
-        if global_config.data_version == "small" and is_train:
-            self.data = df.values[: len(df) // 30]
-        else:
-            self.data = df.values
-
-        self.data = torch.tensor(self.data).to(torch.float32).cuda()
+        self.data_df = df
 
     def get(self) -> torch.utils.data.DataLoader:
-        if global_config.model == "transformer":
-            dataset = TransformerDataset(self.data, self.turbine_count)
-        else:
-            dataset = Dataset(self.data, self.turbine_count)
+        sampler = Sampler(self.data_df, self.turbine_count, is_train=self.is_train)
 
-        sampler = Sampler(self.data, self.turbine_count, is_train=self.is_train)
+        if global_config.model == "transformer":
+            dataset = TransformerDataset(self.data_df, self.turbine_count, len(sampler))
+        else:
+            dataset = Dataset(self.data_df, self.turbine_count, len(sampler))
 
         return torch.utils.data.DataLoader(
             dataset=dataset,

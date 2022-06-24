@@ -10,7 +10,7 @@ class SimpleGRU(nn.Module):
         self.hidden_size = config.hidden_size
         self.num_layer = config.num_layer
         self.output_timesteps = config.output_timesteps
-        self.input_size = config.input_size
+        self.input_size = len(config.features)
 
         self.gru = nn.GRU(
             input_size=self.input_size,

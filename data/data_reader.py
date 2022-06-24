@@ -21,6 +21,7 @@ class DataReader:
             # 选择第 N 列
             ids = self.location.query("col == @col").TurbID.values
             self.train = self.train.query("id in @ids")
+        self.train.time = pd.to_datetime(self.train.time, format="%H:%M").dt.time
 
     def location_col(self, location):
         location["col"] = -1

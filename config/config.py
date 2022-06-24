@@ -1,6 +1,7 @@
 import json
+from pathlib import Path
 
-PROJECT_NAME = "kdd-05"
+PROJECT_NAME = "kdd-06"
 ONLINE = False
 RANDOM_STATE = 42
 import torch
@@ -15,19 +16,12 @@ __WANDB_CLOSE__ = "close"
 # 因为忘了关这个，被自己坑了好几次。 好不容易训练完了，发现跑的不是指定的exp_file，而是这个
 # IS_DEBUG = False
 IS_DEBUG = False
+# 可以指定搜参基于哪个来
 DEBUG_CONFIG = {
-    "exp_file": "exp/tmp/config.json",
-    "checkpoints": "exp/tmp/checkpoints",
-    "wandb": "offline",
+    "exp": "gru/tmp",
+    "wandb": "close",
     "train": 1,
 }
-
-# DEBUG_CONFIG = {
-#     "exp_file": "exp/gru/1/config.json",
-#     "checkpoints": "exp/gru/1/checkpoints",
-#     "wandb": "offline",
-#     "train": 0,
-# }
 
 
 class Config:
@@ -58,24 +52,26 @@ class Config:
         #     "dim_val": 64,
         # }
         self.conf = {
-            "~lr": 0.0001,
+            "~lr": 0.0005,
             "~batch_size": 128,
-            "~epochs": 10,
-            "~early_stopping_patience": 5,
+            "~epochs": 20,
+            "~early_stopping_patience": 3,
             "~optimizer": "adam",
             "~loss": "mse",
             "scheduler": "linear",
             "warmup": 0.1,
-            "data_version": "all_turbines",
-            "col_turbine": 0,  # 0, 1, 2, 3, 4, 5.    -1: all
-            "scaler": "all_col",
+            "data_version": "full",
+            "scaler": "all_turbines_all_col",
             "truncate": 0.98,
             "input_size": 10,
-            "input_timesteps": 144,
+            "input_timesteps": 288,
             "output_timesteps": 288,
-            "model": "transformer",
-            "n_heads": 8,
-            "dim_val": 128,
+            "model": "gru",
+            "hidden_size": 48,
+            "num_layer": 2,
+            "turbine": 1,
+            "dropout": 0.0,
+            "split": "",  # wandb 搜参改不了。
         }
 
         self.wandb_conf = {
@@ -87,14 +83,17 @@ class Config:
         }
 
     def init(self, args, extra):
-        if args.exp_file:
-            self.conf = json.load(open(args.exp_file))
-            for i in range(len(extra)):
-                k, v = extra[i].split("=")
-                k = k.replace("--", "")
-                self.conf[k] = type(self.conf[k])(v)
+
+        self.conf = json.load(open(f"{args.exp_dir}/{args.exp}/config.json"))
+        for i in range(len(extra)):
+            k, v = extra[i].split("=")
+            k = k.replace("--", "")
+            self.conf[k] = type(self.conf[k])(v)
         self.wandb_conf["mode"] = args.wandb
-        self.checkpoints_dir = args.checkpoints
+        self.checkpoints_dir = f"{args.exp_dir}/{args.exp}/checkpoints"
+
+        Path(self.checkpoints_dir).mkdir(exist_ok=True, parents=True)
+        print("Checkpoints:", self.checkpoints_dir)
 
         try:
             torch.distributed.init_process_group(backend="nccl")
@@ -112,6 +111,11 @@ class Config:
         if self.distributed:
             return torch.distributed.get_rank()
         return 0
+
+    @property
+    def features(self):
+        fea_str = self.__getattr__("features")
+        return fea_str.split(" ")
 
     def model_file_name(self, prefix="", suffix=""):
         turbine = "turbine_"
@@ -143,13 +147,17 @@ class Config:
         #     wandb.config.update(__dict__, allow_val_change=True)
 
     def __getattr__(self, name: str):
-        return self.conf[name] if name in self.conf else None
+        try:
+            return wandb.config[name]
+        except:
+            # print("wrong", name)
+            return self.conf[name] if name in self.conf else None
 
     def __getitem__(self, key):
         return self.__getattr__(key)
 
     def __str__(self) -> str:
-        return str(self.conf)
+        return "wandb: " + str(wandb.config) + "\n\nconf: " + str(self.conf)
 
 
 global_config = Config()
