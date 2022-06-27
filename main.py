@@ -4,10 +4,13 @@ import pickle
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import torch
 
 import utils
-from callback import cache_checkpoints, early_stopping, score_callback, wandb_callback
+import wandb
+from callback import (cache_checkpoints, early_stopping, score_callback,
+                      wandb_callback)
 from config.config import global_config
 from data import data_loader, data_process, data_reader, data_split
 from model import models
@@ -155,6 +158,13 @@ def cv_i(train_df, val_df, test_df, location, args):
     origin_test_df.loc[:, ["na_count", "is_valid"]] = test_df.loc[
         :, ["na_count", "is_valid"]
     ]
+    # 这个里边的数据并不会真的用到…
+    other_fea = [
+        i
+        for i in global_config.features
+        if i not in (utils.feature_cols + ["na_count", "is_valid"])
+    ]
+    origin_test_df.loc[:, other_fea] = 1
 
     test_ds = data_loader.DataLoader(test_df).get()
 
@@ -195,6 +205,8 @@ def cv_i(train_df, val_df, test_df, location, args):
     c /= 2
     score_distribute = {"score mean": c.mean(), "score std": c.std()}
     global_config.log(score_distribute)
+    table = wandb.Table(data=pd.DataFrame(c, columns=["scores"]))
+    global_config.log({"window scores": wandb.plot.histogram(table, "scores")})
     print(score_distribute)
 
     if args.train:

@@ -47,6 +47,8 @@ class EarlyStopping(Callback):
         stop = self.counter >= self.patience
         if stop:
             print("Early stopping")
+            print("best", self.min_loss, self.best_epoch)
+            print("second best", self.second_min_loss, self.second_best_epoch)
         return not stop
 
     def on_train_finish(self, model: BaseModelApp):
