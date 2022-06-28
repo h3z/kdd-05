@@ -2,7 +2,7 @@
     "~lr": 0.001,
     "~batch_size": 256,
     "~epochs": 20,
-    "~early_stopping_patience": 10,
+    "~early_stopping_patience": 5,
     "~optimizer": "adam",
     "~loss": "custom1",
     "scheduler": "linear",
@@ -16,6 +16,7 @@
     "model": "gru",
     "hidden_size": 48,
     "num_layer": 2,
-    "turbine": 1,
-    "features": "spd dir environment_tmp inside_tmp nacelle_dir pab1 pab2 pab3 reactive_power active_power"
+    "turbine": 2,
+    "split": "",
+    "features": "is_valid spd dir environment_tmp nacelle_dir pab1 pab2 pab3 active_power"
 }

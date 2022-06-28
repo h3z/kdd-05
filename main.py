@@ -9,8 +9,7 @@ import torch
 
 import utils
 import wandb
-from callback import (cache_checkpoints, early_stopping, score_callback,
-                      wandb_callback)
+from callback import cache_checkpoints, early_stopping, score_callback, wandb_callback
 from config.config import global_config
 from data import data_loader, data_process, data_reader, data_split
 from model import models
@@ -152,6 +151,12 @@ def cv_i(train_df, val_df, test_df, location, args):
 
     # preprocess
     processor = data_process.DataProcess(train_df)
+    # print(f"/mean_std_{global_config.turbine}_{global_config.cv}.pkl")
+    # pickle.dump(
+    #     {"mean": processor.scaler.mean, "std": processor.scaler.std},
+    #     open(f"/mean_std_{global_config.turbine}_{global_config.cv}.pkl", "wb"),
+    # )
+    # return 0, 0
     train_df = processor.preprocess(train_df)
     val_df = processor.preprocess(val_df)
     test_df = processor.preprocess(test_df)
@@ -203,7 +208,11 @@ def cv_i(train_df, val_df, test_df, location, args):
     b = np.array(debug_rmses)
     c = a + b
     c /= 2
-    score_distribute = {"score mean": c.mean(), "score std": c.std()}
+    score_distribute = {
+        "score mean": c.mean(),
+        "score std": c.std(),
+        "score max": c.max(),
+    }
     global_config.log(score_distribute)
     table = wandb.Table(data=pd.DataFrame(c, columns=["scores"]))
     global_config.log({"window scores": wandb.plot.histogram(table, "scores")})

@@ -62,6 +62,13 @@ class DataProcess:
             df.query("day == 66 or (day ==  67 and time <= @time_67)").index,
             utils.feature_cols,
         ] = 0
+
+        # deal last na
+        idx = df[~df.active_power.isna()].index[-1]
+        df.loc[df.index[-1], utils.feature_cols] = df.loc[
+            idx, utils.feature_cols
+        ].values
+
         tmp = df.query(f"active_power.isna()")
         while len(tmp) > 0:
             df.loc[tmp.index, utils.feature_cols] = df.loc[
@@ -138,6 +145,8 @@ class DataProcess:
         df["nacelle_dir_sin"] = np.sin(np.deg2rad(df.nacelle_dir))
         df["nacelle_dir_"] = (df.nacelle_dir + 720) % 360 / 360
 
+        df["dir_add_ndir"] = (df.nacelle_dir_ + df.dir) % 360 / 360
+        df["dir_minus_ndir"] = (df.nacelle_dir_ - df.dir) % 360 / 360
         return df
 
     def fe_pab(self, df):
