@@ -30,6 +30,7 @@ class SimpleGRU(nn.Module):
         output, hidden = self.gru(x, hidden)
 
         output = self.dropout(output)
+        # output = output[:, -288:, :]
         output = self.projection(output)
 
         return output[:, -self.output_timesteps :, -1:]

@@ -14,13 +14,13 @@ __WANDB_CLOSE__ = "close"
 
 
 # 因为忘了关这个，被自己坑了好几次。 好不容易训练完了，发现跑的不是指定的exp_file，而是这个
-# IS_DEBUG = False
+# IS_DEBUG = True
 IS_DEBUG = False
 # 可以指定搜参基于哪个来
 DEBUG_CONFIG = {
-    "exp": "gru/tmp",
-    "wandb": "close",
-    "train": 1,
+    "exp": "gru/each",
+    "wandb": "offline",
+    "train": 0,
 }
 
 

@@ -105,6 +105,7 @@ class DataProcess:
         df = self.fe_day(df)
         df = self.fe_nacelle_dir(df)
         df = self.fe_active_power(df)
+        df = self.fe_environment_tmp(df)
         return df
 
     def fe_day(self, df):
@@ -138,7 +139,16 @@ class DataProcess:
         return df
 
     def fe_environment_tmp(self, df):
-        pass
+        i = "environment_tmp"
+        lower = df[i].quantile(1 - 0.99)
+        upper = df[i].quantile(0.99)
+        df["environment_tmp_"] = df[i].clip(lower=lower, upper=upper)
+        df["environment_tmp_"] = df["environment_tmp_"] / 50
+
+        tmp = df.environment_tmp.rolling(12).mean()
+        tmp = tmp.fillna(tmp.values[11])
+        df["environment_tmp_mean"] = tmp / 50
+        return df
 
     def fe_nacelle_dir(self, df):
         df["nacelle_dir_cos"] = np.cos(np.deg2rad(df.nacelle_dir))
@@ -170,10 +180,21 @@ class DataProcess:
         return df
 
     def fe_active_power(self, df):
-        diff = df.active_power - df.active_power.shift(-1)
-        diff = diff.fillna(0)
-        # df["active_power_diff"] = (diff - 350.4457511390552) / 424.9932085867589
-        df["active_power_diff"] = diff / 1500
+
+        df["active_power_"] = df.active_power
+
+        idx = df.query("(pab1 > 89 or pab2 > 89 or pab3 > 89)").index
+        df.loc[idx, "active_power_"] = -10000
+
+        idx = df.query("(pab1 <= 89 and pab2 <= 89 and pab3 <= 89)").index[-1]
+        print(df.loc[idx, "active_power_"])
+        df.loc[df.index[-1], "active_power_"] = df.loc[idx, "active_power_"]
+
+        idx = df.query("active_power_ ==  -10000 ").index
+        while len(idx) > 0:
+            df.loc[idx, "active_power_"] = df.loc[idx + 1, "active_power_"].values
+            idx = df.query("active_power_ ==  -10000 ").index
+
         return df
 
     def postprocess(self, preds: np.ndarray) -> np.ndarray:

@@ -140,7 +140,7 @@ def evaluate(predictions, grounds, raw_data_lst):
     #     f"RMSE: {overall_rmse:.3f}, MAE: {overall_mae:.3f}, SCORE:  {total_score:.3f}"
     # )
 
-    return overall_rmse, overall_mae, total_score, maes, rmses
+    return overall_rmse, overall_mae, total_score, maes, rmses, gts.mean(-1)
 
 
 def ignore_zeros(predictions, grounds):

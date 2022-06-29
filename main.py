@@ -31,7 +31,7 @@ def _score_(test_ds, processor, origin_test_df, location):
         r2 = 1 - ((np.sum((a - b) ** 2)) / (np.sum((np.mean(b) - b) ** 2)))
 
         test_preds = processor.postprocess(test_preds).squeeze()
-        rmse, mae, score, debug_maes, debug_rmses = compute_score(
+        rmse, mae, score, debug_maes, debug_rmses, gts = compute_score(
             origin_test_df, location, test_preds
         )
 
@@ -128,10 +128,10 @@ def compute_score(origin_test_df, location, test_preds):
 
     # utils.wandb_plot(train_pred_records, val_pred_records, test_preds, test_gts)
 
-    rmse, mae, score, debug_maes, debug_rmses = evaluate(
+    rmse, mae, score, debug_maes, debug_rmses, gts = evaluate(
         [test_preds], [test_gts], [origin_test_df]
     )
-    return rmse, mae, score, debug_maes, debug_rmses
+    return rmse, mae, score, debug_maes, debug_rmses, gts
 
 
 def prepare_data():
@@ -200,7 +200,7 @@ def cv_i(train_df, val_df, test_df, location, args):
     test_preds, _ = train.predict(model_app, test_ds)
     test_preds = processor.postprocess(test_preds).squeeze()
 
-    rmse, mae, score, debug_maes, debug_rmses = compute_score(
+    rmse, mae, score, debug_maes, debug_rmses, gts = compute_score(
         origin_test_df, location, test_preds
     )
 
@@ -278,6 +278,7 @@ def main():
 
     scores = []
     for i in range(args.capacity_from, args.capacity_to):
+        # for i in range(1, 2):
         turbine_id = i + 1
         print(">>>>>>>>>>>>>> turbine", turbine_id, "<<<<<<<<<<<<<<<<<<")
         rmse, mae, score, cv_scores = turbine_i(args, turbine_id)

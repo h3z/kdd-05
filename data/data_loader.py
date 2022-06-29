@@ -20,19 +20,21 @@ class Dataset(torch.utils.data.Dataset):
 
         # 为了解决 x 和 y 共用一列数据，并且顺序不能乱的问题
         data_df["__is_valid"] = data_df["is_valid"]
+        data_df["__active_power"] = data_df["active_power"]
         self.data = (
-            torch.tensor(data_df[global_config.features + ["__is_valid"]].values)
+            torch.tensor(
+                data_df[
+                    global_config.features + ["__active_power", "__is_valid"]
+                ].values
+            )
             .to(torch.float32)
             .cuda()
         )
 
     def __getitem__(self, index):
         mid = index + self.input_timesteps
-        # : -> :-1，最后一列新增了 is_valid
-        x = self.data[index:mid, :-1]
-        # 这个 -1 要注意。可能随着特征变化，就不再指向 y 了。
-        # 目前主要是自定义损失时候，想要通过 y 传递一些权重过去
-        # 2022年06月21日16:57:05 -1 -> -2，新增了 is_valid
+        # : -> :-2，最后一列新增了 __active_power, __is_valid
+        x = self.data[index:mid, :-2]
         y = self.data[mid : index + self.total_timesteps, -2:-1]
         w = self.data[mid : index + self.total_timesteps, -1]
         return x, y, w
